@@ -1,0 +1,24 @@
+{
+  "_README": "This is a TEMPLATE. The real google-services.json is git-ignored and lives next to this file. Jayesh: download it from Firebase Console → Project Settings → Your Apps → Android app (com.duren.app) → google-services.json. Drop it in app/. See docs/FIREBASE_SETUP.md for the full checklist.",
+  "project_info": {
+    "project_number": "REPLACE_ME",
+    "project_id": "duren-dev",
+    "storage_bucket": "duren-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "REPLACE_ME",
+        "android_client_info": {
+          "package_name": "com.duren.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [{ "current_key": "REPLACE_ME" }],
+      "services": {
+        "appinvite_service": { "other_platform_oauth_client": [] }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

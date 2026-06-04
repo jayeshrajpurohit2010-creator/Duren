@@ -1,0 +1,51 @@
+rules_version = '2';
+// Duren Phase 0 — Firestore Security Rules
+// Covers only profiles/{userId} and usernames/{username}.
+// Every Phase 1+ collection gets its own rules block when introduced.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthed() && request.auth.uid == uid;
+    }
+
+    // ===== Profiles =====
+    match /profiles/{userId} {
+      allow read: if isAuthed();
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasAll(['username', 'displayName', 'email', 'createdAt', 'lastSeen'])
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 3
+        && request.resource.data.username.size() <= 30;
+      allow update: if isOwner(userId)
+        // Username is immutable post-creation in Phase 0.
+        && request.resource.data.username == resource.data.username;
+      allow delete: if isOwner(userId);
+    }
+
+    // ===== Usernames (sentinel collection for uniqueness) =====
+    // Public read so the sign-up form can do availability checks pre-auth.
+    // Create requires the caller to be authed and the doc to point at their own uid.
+    // Existence is checked atomically in a batched write — first-writer wins.
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isAuthed()
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAuthed()
+        && resource.data.uid == request.auth.uid;
+    }
+
+    // ===== Deny by default for every other collection =====
+    // Phase 1+ collections (tribes/posts/echoes/messages/lanterns/etc.) will
+    // add their own match blocks. Until then, all access is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

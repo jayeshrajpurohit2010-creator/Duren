@@ -1,0 +1,35 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Firebase secrets — never commit
+app/google-services.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Cloud Functions (Phase 2+)
+/functions/node_modules
+/functions/lib
+/functions/.runtimeconfig.json
+
+# Node tooling for Firestore rules tests
+/firebase/test/node_modules
+/firebase/test/package-lock.json
+
+# Keystores
+*.jks
+*.keystore
