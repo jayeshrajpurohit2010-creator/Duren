@@ -4,6 +4,7 @@ import android.net.Uri
 import com.duren.app.core.DomainError
 import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.ember.model.PostMode
+import com.duren.app.data.media.MediaUploadRepository
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
@@ -11,12 +12,10 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,7 +34,7 @@ import javax.inject.Singleton
 class EmberRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val storage: FirebaseStorage
+    private val mediaUploader: MediaUploadRepository
 ) {
 
     /** The Clearing: newest non-expired embers across all tribes. Re-query with a larger [limit] to paginate. */
@@ -64,16 +63,19 @@ class EmberRepository @Inject constructor(
         val trimmed = text.trim()
         if (trimmed.isEmpty() && mediaUri == null) return Result.failure(DomainError.EmptyEmber)
 
+        // Upload media first (Cloudinary, unsigned) so we never write an ember
+        // pointing at an image that failed to land.
+        var mediaUrl: String? = null
+        var mediaType: String? = null
+        if (mediaUri != null) {
+            mediaUrl = mediaUploader.uploadImage(mediaUri).getOrNull()
+                ?: return Result.failure(DomainError.MediaUploadFailed)
+            mediaType = "photo"
+        }
+
         return try {
             val profileSnap = firestore.collection(PROFILES).document(user.uid).get().await()
             val masked = mode.isMasked
-
-            var mediaUrl: String? = null
-            if (mediaUri != null) {
-                val ref = storage.reference.child("embers/${user.uid}/${UUID.randomUUID()}")
-                ref.putFile(mediaUri).await()
-                mediaUrl = ref.downloadUrl.await().toString()
-            }
 
             val now = Timestamp.now()
             val expiresAt = Timestamp(now.seconds + LIFESPAN_SECONDS, 0)
@@ -89,6 +91,7 @@ class EmberRepository @Inject constructor(
                     "tribeName" to tribeName.trim(),
                     "text" to trimmed,
                     "mediaUrl" to mediaUrl,
+                    "mediaType" to mediaType,
                     "mode" to mode.wire,
                     "createdAt" to FieldValue.serverTimestamp(),
                     "expiresAt" to expiresAt,
@@ -192,6 +195,7 @@ class EmberRepository @Inject constructor(
             tribeName = getString("tribeName") ?: "",
             text = getString("text") ?: "",
             mediaUrl = getString("mediaUrl"),
+            mediaType = getString("mediaType"),
             mode = PostMode.fromWire(getString("mode")),
             createdAt = getTimestamp("createdAt"),
             expiresAt = getTimestamp("expiresAt"),

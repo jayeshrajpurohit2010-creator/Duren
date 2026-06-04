@@ -27,7 +27,6 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
         release {
@@ -91,7 +90,6 @@ dependencies {
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.crashlytics.ktx)
     implementation(libs.firebase.analytics.ktx)
-    implementation(libs.firebase.storage.ktx)
 
     // Hilt
     implementation(libs.hilt.android)
@@ -110,6 +108,9 @@ dependencies {
     // Coil
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    // Networking (Cloudinary uploads)
+    implementation(libs.okhttp)
 
     // Tests
     testImplementation(libs.junit)

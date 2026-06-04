@@ -8,5 +8,6 @@ sealed class DomainError(message: String) : Exception(message) {
     object NotAuthenticated : DomainError("Sign in to gather at the fire.")
     object EmptyEmber : DomainError("An ember needs a spark. Say something.")
     object TribeNameRequired : DomainError("Give your tribe a name.")
+    object MediaUploadFailed : DomainError("That image wouldn't catch. Try another.")
     object Unknown : DomainError("Something went wrong. Try again.")
 }

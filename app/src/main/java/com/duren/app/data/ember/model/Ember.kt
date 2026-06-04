@@ -43,6 +43,7 @@ data class Ember(
     val tribeName: String = "",
     val text: String = "",
     val mediaUrl: String? = null,
+    val mediaType: String? = null,
     val mode: PostMode = PostMode.Named,
     val createdAt: Timestamp? = null,
     val expiresAt: Timestamp? = null,
