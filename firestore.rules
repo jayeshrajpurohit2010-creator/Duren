@@ -41,9 +41,64 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
     }
 
+    // ===== Tribes (Phase 1) =====
+    match /tribes/{tribeId} {
+      allow read: if isAuthed();
+      allow create: if isAuthed()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasAll(['name', 'createdBy', 'createdAt', 'memberCount'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.memberCount == 1;
+      // Any member can nudge memberCount (join/leave). Name/creator are immutable.
+      // Phase 4 moves the counter server-side; until then keep it permissive but bounded.
+      allow update: if isAuthed()
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if isAuthed() && resource.data.createdBy == request.auth.uid;
+    }
+
+    // ===== Memberships (flat {uid}_{tribeId}) =====
+    match /memberships/{membershipId} {
+      allow read: if isAuthed();
+      allow create: if isOwner(request.resource.data.uid);
+      allow delete: if isAuthed() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ===== Embers (48h posts) =====
+    match /embers/{emberId} {
+      allow read: if isAuthed();
+      allow create: if isAuthed()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.keys().hasAll(['authorId', 'createdAt', 'expiresAt', 'echoCount'])
+        && request.resource.data.echoCount == 0;
+      // Counter bumps (echo/coldMark/extension) by any authed user. Author/text/createdAt immutable.
+      // Phase 4 replaces this with Cloud Function writes for anti-gaming.
+      allow update: if isAuthed()
+        && request.resource.data.authorId == resource.data.authorId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.text == resource.data.text;
+      allow delete: if isAuthed() && resource.data.authorId == request.auth.uid;
+
+      // Echoes — one doc per user, keyed by uid.
+      match /echoes/{userId} {
+        allow read: if isAuthed();
+        allow create, delete: if isOwner(userId);
+        allow update: if false;
+      }
+
+      // Cold marks — one doc per user, keyed by uid. Reports are write-once.
+      match /coldMarks/{userId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if false;
+      }
+    }
+
     // ===== Deny by default for every other collection =====
-    // Phase 1+ collections (tribes/posts/echoes/messages/lanterns/etc.) will
-    // add their own match blocks. Until then, all access is denied.
+    // Phase 2+ collections (messages/lanterns/ghostRooms/etc.) will add their
+    // own match blocks. Until then, all access is denied.
     match /{document=**} {
       allow read, write: if false;
     }
