@@ -50,7 +50,8 @@ fun ProfileScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            if (profile == null) {
+            val p = profile
+            if (p == null) {
                 ShimmerBox(
                     modifier = Modifier
                         .size(96.dp)
@@ -61,7 +62,6 @@ fun ProfileScreen(
                 Spacer(Modifier.height(DurenSpacing.space2))
                 ShimmerBox(modifier = Modifier.fillMaxWidth().height(16.dp))
             } else {
-                val p = profile!!
                 Box(
                     modifier = Modifier
                         .size(96.dp)

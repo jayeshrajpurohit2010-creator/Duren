@@ -3,10 +3,10 @@ package com.duren.app.feature.nav
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.Hub
-import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -40,10 +40,12 @@ fun MainScaffold(onSignedOut: () -> Unit) {
     val tabsNav = rememberNavController()
 
     val tabs = listOf(
-        TabSpec(StateTab, "State", Icons.Outlined.LocalFireDepartment),
-        TabSpec(TribesTab, "Tribes", Icons.Outlined.Hub),
+        // Placeholder icons from icons-core; Phase 1 replaces these with custom
+        // Duren icons (ic_campfire, ic_tribe, ic_compose, ic_nest, ic_presence).
+        TabSpec(StateTab, "State", Icons.Outlined.Home),
+        TabSpec(TribesTab, "Tribes", Icons.Outlined.Star),
         TabSpec(ComposeTab, "Compose", Icons.Outlined.Add),
-        TabSpec(NestTab, "Nest", Icons.Outlined.Group),
+        TabSpec(NestTab, "Nest", Icons.Outlined.Favorite),
         TabSpec(PresenceTab, "Presence", Icons.Outlined.Person)
     )
 
