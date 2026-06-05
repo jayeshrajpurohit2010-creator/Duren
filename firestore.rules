@@ -107,6 +107,13 @@ service cloud.firestore {
       allow update: if isAuthed()
         && request.resource.data.authorId == resource.data.authorId;
       allow delete: if isAuthed() && resource.data.authorId == request.auth.uid;
+
+      // Found marks — one doc per user, keyed by uid. Write-once.
+      match /foundMarks/{userId} {
+        allow read: if isAuthed();
+        allow create: if isOwner(userId);
+        allow update, delete: if false;
+      }
     }
 
     // ===== Deny by default for every other collection =====

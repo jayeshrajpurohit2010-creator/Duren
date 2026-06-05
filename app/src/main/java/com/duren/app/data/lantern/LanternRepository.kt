@@ -105,8 +105,37 @@ class LanternRepository @Inject constructor(
         )
     }
 
+    /**
+     * Record that the current user found [lanternId].
+     *
+     * Mirrors the once-per-user transaction pattern of [EmberRepository.coldMark]:
+     *  - If `foundMarks/{uid}` already exists → no-op (no double count).
+     *  - If the lantern was authored by the current user → no-op (can't find your own).
+     *  - Otherwise set the mark and increment `foundCount` atomically.
+     */
+    suspend fun markFound(lanternId: String): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        val lanternRef = firestore.collection(LANTERNS).document(lanternId)
+        val markRef = lanternRef.collection(FOUND_MARKS).document(uid)
+        return try {
+            firestore.runTransaction { txn ->
+                val lanternSnap = txn.get(lanternRef)
+                // Guard: author cannot mark their own lantern as found.
+                if (lanternSnap.getString("authorId") == uid) return@runTransaction
+                // Guard: already found — no double count.
+                if (txn.get(markRef).exists()) return@runTransaction
+                txn.set(markRef, mapOf("uid" to uid, "createdAt" to Timestamp.now()))
+                txn.update(lanternRef, "foundCount", FieldValue.increment(1))
+            }.await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
     companion object {
         const val LANTERNS = "lanterns"
+        const val FOUND_MARKS = "foundMarks"
         const val MAX_TEXT = 280
         const val LIFESPAN_SECONDS = 48L * 3600 // 48h
     }

@@ -46,6 +46,7 @@ import com.duren.app.ui.components.ExpiryTimer
 import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
+import androidx.compose.foundation.clickable
 
 private const val MAX_LANTERN_TEXT = 280
 
@@ -132,7 +133,14 @@ fun NestScreen(
                             verticalArrangement = Arrangement.spacedBy(DurenSpacing.space3)
                         ) {
                             items(state.lanterns, key = { it.id }) { lantern ->
-                                LanternCard(lantern = lantern, mine = state.tab == NestTab.Yours)
+                                val isWandering = state.tab == NestTab.Wandering
+                                LanternCard(
+                                    lantern = lantern,
+                                    mine = !isWandering,
+                                    onMarkFound = if (isWandering) {
+                                        { viewModel.markFound(lantern.id) }
+                                    } else null
+                                )
                             }
                         }
                     }
@@ -154,9 +162,28 @@ fun NestScreen(
 }
 
 @Composable
-private fun LanternCard(lantern: Lantern, mine: Boolean) {
+private fun LanternCard(
+    lantern: Lantern,
+    mine: Boolean,
+    onMarkFound: (() -> Unit)? = null
+) {
+    // Track whether the user has tapped this card in the current session so we
+    // only call markFound once per tap (not on every recomposition).
+    var tapped by remember(lantern.id) { mutableStateOf(false) }
+
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onMarkFound != null) {
+                    Modifier.clickable {
+                        if (!tapped) {
+                            tapped = true
+                            onMarkFound()
+                        }
+                    }
+                } else Modifier
+            ),
         shape = DurenShapes.large,
         tonalElevation = 2.dp
     ) {
@@ -189,7 +216,7 @@ private fun LanternCard(lantern: Lantern, mine: Boolean) {
             ) {
                 ExpiryTimer(expiresAt = lantern.expiresAt, extended = false)
                 Text(
-                    text = "${lantern.foundCount} found",
+                    text = "🏮 found by ${lantern.foundCount}",
                     style = MaterialTheme.typography.labelSmall,
                     color = DurenColors.TextMuted
                 )
