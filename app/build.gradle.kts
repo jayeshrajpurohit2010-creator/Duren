@@ -14,7 +14,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.duren.app"
+        applicationId = "com.duren"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
