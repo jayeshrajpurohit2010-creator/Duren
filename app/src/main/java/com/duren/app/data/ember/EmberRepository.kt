@@ -52,6 +52,17 @@ class EmberRepository @Inject constructor(
             .limit(limit)
     )
 
+    /** The current user's own non-expired embers, newest first. */
+    fun observeMine(limit: Long): Flow<List<Ember>> {
+        val uid = auth.currentUser?.uid
+        return feedQuery(
+            firestore.collection(EMBERS)
+                .whereEqualTo("authorId", uid)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(limit)
+        )
+    }
+
     suspend fun createEmber(
         text: String,
         tribeId: String?,

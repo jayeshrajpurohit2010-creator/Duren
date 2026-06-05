@@ -3,6 +3,8 @@ package com.duren.app.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duren.app.data.auth.AuthRepository
+import com.duren.app.data.ember.EmberRepository
+import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.profile.ProfileRepository
 import com.duren.app.data.profile.model.Profile
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +20,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    profileRepository: ProfileRepository
+    profileRepository: ProfileRepository,
+    emberRepository: EmberRepository
 ) : ViewModel() {
 
     val profile: StateFlow<Profile?> = authRepository.currentUser
@@ -26,6 +29,9 @@ class ProfileViewModel @Inject constructor(
             if (user == null) flowOf(null) else profileRepository.observeProfile(user.uid)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val myEmbers: StateFlow<List<Ember>> = emberRepository.observeMine(50)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun signOut() = authRepository.signOut()
 }
