@@ -167,21 +167,14 @@ private fun LanternCard(
     mine: Boolean,
     onMarkFound: (() -> Unit)? = null
 ) {
-    // Track whether the user has tapped this card in the current session so we
-    // only call markFound once per tap (not on every recomposition).
-    var tapped by remember(lantern.id) { mutableStateOf(false) }
-
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .then(
+                // markFound is idempotent server-side (one foundMarks doc per user),
+                // so a plain click is safe and a re-tap after a failure can retry.
                 if (onMarkFound != null) {
-                    Modifier.clickable {
-                        if (!tapped) {
-                            tapped = true
-                            onMarkFound()
-                        }
-                    }
+                    Modifier.clickable { onMarkFound() }
                 } else Modifier
             ),
         shape = DurenShapes.large,

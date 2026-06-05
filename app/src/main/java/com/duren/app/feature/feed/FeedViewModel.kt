@@ -62,7 +62,9 @@ class FeedViewModel @Inject constructor(
                             async { ember.copy(echoedByMe = emberRepository.hasEchoed(ember.id)) }
                         }.map { it.await() }
                     }
-                    emit(hydrated)
+                    // Rank by heat at snapshot time (stable between snapshots so the
+                    // list doesn't reshuffle under the user on every echo tap).
+                    emit(rankByHeat(hydrated))
                 }
             }
         }
@@ -107,6 +109,26 @@ class FeedViewModel @Inject constructor(
         initialValue = FeedUiState.Loading
     )
 
+    /**
+     * Phase-1 client-side heat ranking — a faithful slice of the Algorithm Spec's
+     * scoring layer, runnable without Cloud Functions. Order embers by engagement
+     * lifted by recency and damped by age (classic gravity decay), so a fresh post
+     * still surfaces while a post that's "catching fire" outranks an older quiet one.
+     * Cold marks subtract from heat (light anti-gaming). The full 7-layer,
+     * personalized, server-side system replaces this in Phase 4.
+     *
+     *   heat = (echoes − coldMarks, floored at 0, +1) / (ageHours + 2) ^ GRAVITY
+     */
+    private fun rankByHeat(embers: List<Ember>): List<Ember> {
+        val now = System.currentTimeMillis()
+        return embers.sortedByDescending { ember ->
+            val createdMs = ember.createdAt?.toDate()?.time ?: now
+            val ageHours = (now - createdMs).coerceAtLeast(0L) / 3_600_000.0
+            val engagement = (ember.echoCount - ember.coldMarkCount).coerceAtLeast(0) + 1
+            engagement.toDouble() / Math.pow(ageHours + 2.0, HEAT_GRAVITY)
+        }
+    }
+
     /** Increase the Firestore limit to fetch the next page of embers. */
     fun loadMore() {
         limit.value += 20L
@@ -147,5 +169,10 @@ class FeedViewModel @Inject constructor(
         viewModelScope.launch {
             emberRepository.coldMark(emberId, reason)
         }
+    }
+
+    private companion object {
+        // Higher = recency wins harder over raw echo count. 1.5 ≈ Hacker-News gravity.
+        const val HEAT_GRAVITY = 1.5
     }
 }
