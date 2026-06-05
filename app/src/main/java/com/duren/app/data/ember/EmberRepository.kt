@@ -52,13 +52,22 @@ class EmberRepository @Inject constructor(
             .limit(limit)
     )
 
-    /** The current user's own non-expired embers, newest first. */
+    /**
+     * The current user's own non-expired embers, newest first.
+     *
+     * Deliberately NO server-side `orderBy`: combining `whereEqualTo("authorId")`
+     * with `orderBy("createdAt")` would demand a composite index that isn't
+     * deployed (the query would just fail and the swallowed listener error would
+     * leave a permanently empty list). [feedQuery] sorts newest-first on-device
+     * instead, so this works with zero Firestore console setup. Fine at MVP scale
+     * (a user's live 48h embers are few); add the composite index + restore
+     * orderBy if a user can ever exceed [limit] active embers.
+     */
     fun observeMine(limit: Long): Flow<List<Ember>> {
         val uid = auth.currentUser?.uid
         return feedQuery(
             firestore.collection(EMBERS)
                 .whereEqualTo("authorId", uid)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(limit)
         )
     }
@@ -189,6 +198,10 @@ class EmberRepository @Inject constructor(
             val list = snap?.documents
                 ?.mapNotNull { it.toEmber() }
                 ?.filter { e -> e.expiresAt == null || e.expiresAt > now }
+                // Newest-first on-device, so queries that skip server orderBy
+                // (e.g. observeMine, which avoids a composite index) are ordered
+                // correctly. No-op for queries already server-sorted by createdAt.
+                ?.sortedByDescending { it.createdAt }
                 ?: emptyList()
             trySend(list)
         }

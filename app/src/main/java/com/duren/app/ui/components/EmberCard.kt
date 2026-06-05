@@ -58,7 +58,10 @@ fun EmberCard(
     ember: Ember,
     onEcho: () -> Unit,
     onColdMark: (reason: String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // When false (e.g. your own embers on Presence), the echo + report controls
+    // render as plain, non-tappable status so there's no dead/confusing UI.
+    interactive: Boolean = true
 ) {
     var showColdMarkDialog by remember { mutableStateOf(false) }
 
@@ -209,7 +212,7 @@ fun EmberCard(
                 // Echo button + count
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable(onClick = onEcho)
+                    modifier = if (interactive) Modifier.clickable(onClick = onEcho) else Modifier
                 ) {
                     Icon(
                         imageVector = if (ember.echoedByMe) Icons.Filled.Favorite else Icons.Outlined.Favorite,
@@ -233,17 +236,19 @@ fun EmberCard(
                     extended = ember.extended
                 )
 
-                // Overflow → cold mark
-                IconButton(
-                    onClick = { showColdMarkDialog = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.MoreVert,
-                        contentDescription = "More options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
+                // Overflow → cold mark (hidden for non-interactive cards, e.g. own embers)
+                if (interactive) {
+                    IconButton(
+                        onClick = { showColdMarkDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.MoreVert,
+                            contentDescription = "More options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
