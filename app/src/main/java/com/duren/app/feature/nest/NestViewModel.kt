@@ -74,6 +74,12 @@ class NestViewModel @Inject constructor(
         }
     }
 
+    fun markFound(lanternId: String) {
+        viewModelScope.launch {
+            lanternRepository.markFound(lanternId) // failures are swallowed gracefully
+        }
+    }
+
     fun resetLightState() {
         _lightState.value = LightState.Idle
     }
