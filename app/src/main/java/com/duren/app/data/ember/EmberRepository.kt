@@ -146,10 +146,12 @@ class EmberRepository @Inject constructor(
         val emberRef = firestore.collection(EMBERS).document(emberId)
         val markRef = emberRef.collection(COLD_MARKS).document(uid)
         return try {
-            if (markRef.get().await().exists()) return Result.success(Unit)
-            firestore.runBatch { batch ->
-                batch.set(markRef, mapOf("uid" to uid, "reason" to reason, "createdAt" to Timestamp.now()))
-                batch.update(emberRef, "coldMarkCount", FieldValue.increment(1))
+            // Transaction so the "already marked?" check and the increment are
+            // atomic — two rapid taps can't both pass the guard and double-count.
+            firestore.runTransaction { txn ->
+                if (txn.get(markRef).exists()) return@runTransaction
+                txn.set(markRef, mapOf("uid" to uid, "reason" to reason, "createdAt" to Timestamp.now()))
+                txn.update(emberRef, "coldMarkCount", FieldValue.increment(1))
             }.await()
             Result.success(Unit)
         } catch (_: Exception) {

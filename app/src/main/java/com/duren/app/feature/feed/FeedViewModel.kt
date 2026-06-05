@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -39,15 +40,18 @@ class FeedViewModel @Inject constructor(
     private val limit = MutableStateFlow(20L)
 
     /**
-     * Set of ember IDs whose echo state the user has toggled locally but whose
-     * server snapshot hasn't reflected yet. XOR-ed with the hydrated [echoedByMe]
-     * so the heart flips instantly on tap.
+     * Pending optimistic echo intents: emberId → the state the user just chose
+     * (true = echoed, false = un-echoed). An entry lives only until a server
+     * snapshot hydrates that ember with a matching [Ember.echoedByMe], at which
+     * point it is dropped so the persisted value takes over. This survives feed
+     * snapshots (which only carry the raw count, not per-user echo state) and
+     * avoids the heart flickering back between RPC-success and snapshot arrival.
      */
-    private val optimisticEchoToggles = MutableStateFlow<Set<String>>(emptySet())
+    private val pendingEchoIntents = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
     /**
      * Hot flow of hydrated ember lists — [Ember.echoedByMe] resolved in parallel
-     * for every incoming snapshot.
+     * (off the main thread, in this coroutine) for every incoming snapshot.
      */
     private val hydratedList: Flow<List<Ember>> = limit
         .flatMapLatest { currentLimit ->
@@ -68,10 +72,32 @@ class FeedViewModel @Inject constructor(
      * Starts as [FeedUiState.Loading]; transitions to [Empty] or [Content] once
      * the first hydrated snapshot arrives.
      */
-    val uiState: StateFlow<FeedUiState> = combine(hydratedList, optimisticEchoToggles) { list, toggles ->
-        // Apply optimistic overrides: flip echoedByMe for any id in the toggle set
+    val uiState: StateFlow<FeedUiState> = combine(hydratedList, pendingEchoIntents) { list, intents ->
+        // Reconcile: drop any pending intent the server has now caught up to, so
+        // we never double-apply an override on top of an already-correct snapshot.
+        if (intents.isNotEmpty()) {
+            val reconciled = intents.filterNot { (id, desired) ->
+                list.firstOrNull { it.id == id }?.echoedByMe == desired
+            }
+            if (reconciled.size != intents.size) {
+                pendingEchoIntents.value = reconciled
+            }
+        }
+
         val merged = list.map { ember ->
-            if (ember.id in toggles) ember.copy(echoedByMe = !ember.echoedByMe) else ember
+            val desired = intents[ember.id]
+            when {
+                desired == null || desired == ember.echoedByMe -> ember
+                else -> {
+                    // Apply optimistic override and nudge the count so the number
+                    // moves with the heart until the snapshot confirms it.
+                    val delta = if (desired) 1 else -1
+                    ember.copy(
+                        echoedByMe = desired,
+                        echoCount = (ember.echoCount + delta).coerceAtLeast(0)
+                    )
+                }
+            }
         }
         if (merged.isEmpty()) FeedUiState.Empty
         else FeedUiState.Content(merged)
@@ -87,23 +113,31 @@ class FeedViewModel @Inject constructor(
     }
 
     /**
-     * Toggle echo for an ember. The heart flips immediately via [optimisticEchoToggles];
+     * Toggle echo for an ember. The heart flips immediately via [pendingEchoIntents];
      * the Firestore snapshot reconciles the persisted state shortly after, at which
-     * point the local override is cleared so the server value takes over.
+     * point the local intent is dropped (see the reconcile step in [uiState]).
      */
     fun echo(emberId: String) {
-        // Optimistic: add to toggle set so the XOR flips the heart immediately
-        optimisticEchoToggles.value = optimisticEchoToggles.value + emberId
+        // Desired = opposite of the currently displayed state (intent override
+        // if one is pending, otherwise the last hydrated value).
+        val currentlyEchoed = when (val state = uiState.value) {
+            is FeedUiState.Content -> state.embers.firstOrNull { it.id == emberId }?.echoedByMe
+            else -> null
+        } ?: false
+        val desired = !currentlyEchoed
+
+        pendingEchoIntents.update { it + (emberId to desired) }
 
         viewModelScope.launch {
             val result = emberRepository.toggleEcho(emberId)
-            // Server confirmed: clear the local override — the snapshot now has the real state
-            if (result.isSuccess) {
-                optimisticEchoToggles.value = optimisticEchoToggles.value - emberId
-            }
-            // Server failed: revert by removing the toggle (XOR back to original)
-            if (result.isFailure) {
-                optimisticEchoToggles.value = optimisticEchoToggles.value - emberId
+            result.onSuccess { nowEchoed ->
+                // If the server landed on a different state than we predicted
+                // (e.g. a stale local read), correct the intent so the heart
+                // settles on the truth instead of the snapshot reconciling it.
+                pendingEchoIntents.update { it + (emberId to nowEchoed) }
+            }.onFailure {
+                // Revert: drop the optimistic intent so the hydrated value shows.
+                pendingEchoIntents.update { it - emberId }
             }
         }
     }
