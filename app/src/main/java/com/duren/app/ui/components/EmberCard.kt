@@ -34,6 +34,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.ember.model.PostMode
@@ -166,17 +171,31 @@ fun EmberCard(
             }
 
             // Media
-            if (ember.mediaUrl != null) {
-                AsyncImage(
-                    model = ember.mediaUrl,
-                    contentDescription = "Ember media",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .padding(top = DurenSpacing.space3)
-                        .fillMaxWidth()
-                        .heightIn(max = 320.dp)
-                        .clip(DurenShapes.medium)
-                )
+            ember.mediaUrl?.let { media ->
+                val mediaModifier = Modifier
+                    .padding(top = DurenSpacing.space3)
+                    .fillMaxWidth()
+                    .heightIn(max = 320.dp)
+                    .clip(DurenShapes.medium)
+                if (media.startsWith("data:")) {
+                    // Inline (Base64) media — decode locally, no network fetch.
+                    val bitmap = remember(media) { decodeDataUri(media) }
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = "Ember media",
+                            contentScale = ContentScale.Crop,
+                            modifier = mediaModifier
+                        )
+                    }
+                } else {
+                    AsyncImage(
+                        model = media,
+                        contentDescription = "Ember media",
+                        contentScale = ContentScale.Crop,
+                        modifier = mediaModifier
+                    )
+                }
             }
 
             // Footer row: echo button | expiry timer | overflow
@@ -229,4 +248,17 @@ fun EmberCard(
             }
         }
     }
+}
+
+/** Decode a `data:image/...;base64,…` URI into an [ImageBitmap], or null if malformed. */
+private fun decodeDataUri(dataUri: String): ImageBitmap? = try {
+    val base64 = dataUri.substringAfter("base64,", "")
+    if (base64.isBlank()) {
+        null
+    } else {
+        val bytes = Base64.decode(base64, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+    }
+} catch (_: Exception) {
+    null
 }
