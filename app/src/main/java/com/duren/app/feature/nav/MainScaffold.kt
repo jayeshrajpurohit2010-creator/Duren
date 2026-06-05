@@ -28,6 +28,7 @@ import com.duren.app.feature.profile.ProfileScreen
 import com.duren.app.feature.settings.SettingsScreen
 import com.duren.app.feature.tabs.NestTabScreen
 import com.duren.app.feature.tribes.CreateTribeScreen
+import com.duren.app.feature.tribes.TribeDetailScreen
 import com.duren.app.feature.tribes.TribesScreen
 
 private data class TabSpec<T : Any>(
@@ -53,7 +54,9 @@ fun MainScaffold(onSignedOut: () -> Unit) {
     val destination = current?.destination
     // Full-screen routes pushed over the tabs hide the bottom bar.
     val onFullScreen = destination?.hierarchy?.any {
-        it.hasRoute(SettingsRoute::class) || it.hasRoute(CreateTribeRoute::class)
+        it.hasRoute(SettingsRoute::class) ||
+            it.hasRoute(CreateTribeRoute::class) ||
+            it.hasRoute(TribeDetailRoute::class)
     } == true
     val showBottomBar = !onFullScreen
 
@@ -87,7 +90,10 @@ fun MainScaffold(onSignedOut: () -> Unit) {
         ) {
             composable<StateTab> { FeedScreen() }
             composable<TribesTab> {
-                TribesScreen(onCreateTribe = { tabsNav.navigate(CreateTribeRoute) })
+                TribesScreen(
+                    onCreateTribe = { tabsNav.navigate(CreateTribeRoute) },
+                    onOpenTribe = { tribeId -> tabsNav.navigate(TribeDetailRoute(tribeId)) }
+                )
             }
             composable<ComposeTab> {
                 ComposeScreen(
@@ -117,6 +123,11 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                 CreateTribeScreen(
                     onBack = { tabsNav.popBackStack() },
                     onCreated = { tabsNav.popBackStack() }
+                )
+            }
+            composable<TribeDetailRoute> {
+                TribeDetailScreen(
+                    onBack = { tabsNav.popBackStack() }
                 )
             }
         }
