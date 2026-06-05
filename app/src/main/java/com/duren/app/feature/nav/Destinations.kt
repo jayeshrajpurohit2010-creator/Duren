@@ -35,3 +35,6 @@ object SettingsRoute
 
 @Serializable
 object CreateTribeRoute
+
+@Serializable
+data class TribeDetailRoute(val tribeId: String)

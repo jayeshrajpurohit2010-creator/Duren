@@ -35,6 +35,12 @@ class TribeRepository @Inject constructor(
             tribes.map { it.copy(isMember = it.id in myIds) }
         }
 
+    /** A single tribe's live document, with [Tribe.isMember] hydrated for the current user. */
+    fun observeTribe(tribeId: String): Flow<Tribe?> =
+        combine(observeTribeDoc(tribeId), observeMyTribeIds()) { tribe, myIds ->
+            tribe?.copy(isMember = tribe.id in myIds)
+        }
+
     /** Lightweight list of the tribes the current user has joined (for the compose picker). */
     fun observeMyTribes(): Flow<List<Tribe>> = callbackFlow {
         val uid = auth.currentUser?.uid
@@ -157,6 +163,27 @@ class TribeRepository @Inject constructor(
                     )
                 } ?: emptyList()
                 trySend(list)
+            }
+        awaitClose { reg.remove() }
+    }
+
+    private fun observeTribeDoc(tribeId: String): Flow<Tribe?> = callbackFlow {
+        val reg = firestore.collection(TRIBES).document(tribeId)
+            .addSnapshotListener { doc, _ ->
+                val tribe = if (doc != null && doc.exists()) {
+                    Tribe(
+                        id = doc.id,
+                        name = doc.getString("name") ?: "",
+                        description = doc.getString("description") ?: "",
+                        genre = doc.getString("genre") ?: "",
+                        createdBy = doc.getString("createdBy") ?: "",
+                        createdAt = doc.getTimestamp("createdAt"),
+                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt()
+                    )
+                } else {
+                    null
+                }
+                trySend(tribe)
             }
         awaitClose { reg.remove() }
     }
