@@ -96,6 +96,19 @@ service cloud.firestore {
       }
     }
 
+    // ===== Lanterns (anonymous 48h drift messages) =====
+    match /lanterns/{lanternId} {
+      allow read: if isAuthed();
+      allow create: if isAuthed()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.keys().hasAll(['authorId', 'createdAt', 'expiresAt', 'foundCount'])
+        && request.resource.data.foundCount == 0;
+      // foundCount bumps by any authed wanderer. Author is immutable.
+      allow update: if isAuthed()
+        && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isAuthed() && resource.data.authorId == request.auth.uid;
+    }
+
     // ===== Deny by default for every other collection =====
     // Phase 2+ collections (messages/lanterns/ghostRooms/etc.) will add their
     // own match blocks. Until then, all access is denied.
