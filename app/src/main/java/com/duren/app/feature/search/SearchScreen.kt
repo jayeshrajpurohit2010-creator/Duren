@@ -1,5 +1,6 @@
 package com.duren.app.feature.search
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import com.duren.app.ui.theme.DurenSpacing
 @Composable
 fun SearchScreen(
     onBack: () -> Unit,
+    onOpenProfile: (String) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -97,7 +99,9 @@ fun SearchScreen(
                             vertical = DurenSpacing.space2
                         )
                     ) {
-                        items(results, key = { it.uid }) { person -> PersonRow(person) }
+                        items(results, key = { it.uid }) { person ->
+                            PersonRow(person, onClick = { onOpenProfile(person.uid) })
+                        }
                     }
                 }
             }
@@ -106,10 +110,11 @@ fun SearchScreen(
 }
 
 @Composable
-private fun PersonRow(person: Profile) {
+private fun PersonRow(person: Profile, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = DurenSpacing.space2),
         verticalAlignment = Alignment.CenterVertically
     ) {

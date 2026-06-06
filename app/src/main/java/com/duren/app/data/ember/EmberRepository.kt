@@ -74,6 +74,17 @@ class EmberRepository @Inject constructor(
         )
     }
 
+    /**
+     * Another user's non-expired embers, newest first. Like [observeMine] it skips
+     * the server `orderBy` (avoids a composite index) and sorts on-device. Read is
+     * permitted by the live rules, so a public profile view needs zero deploy.
+     */
+    fun observeByAuthor(uid: String, limit: Long): Flow<List<Ember>> = feedQuery(
+        firestore.collection(EMBERS)
+            .whereEqualTo("authorId", uid)
+            .limit(limit)
+    )
+
     suspend fun createEmber(
         text: String,
         tribeId: String?,

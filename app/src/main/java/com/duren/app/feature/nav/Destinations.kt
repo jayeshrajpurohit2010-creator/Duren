@@ -37,6 +37,9 @@ object SettingsRoute
 object SearchRoute
 
 @Serializable
+data class PublicProfileRoute(val userId: String)
+
+@Serializable
 object CreateTribeRoute
 
 @Serializable

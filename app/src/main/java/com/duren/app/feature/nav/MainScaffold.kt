@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import com.duren.app.feature.compose.ComposeScreen
 import com.duren.app.feature.feed.FeedScreen
 import com.duren.app.feature.profile.ProfileScreen
+import com.duren.app.feature.profile.PublicProfileScreen
 import com.duren.app.feature.search.SearchScreen
 import com.duren.app.feature.settings.SettingsScreen
 import com.duren.app.feature.tabs.NestTabScreen
@@ -57,6 +58,7 @@ fun MainScaffold(onSignedOut: () -> Unit) {
     val onFullScreen = destination?.hierarchy?.any {
         it.hasRoute(SettingsRoute::class) ||
             it.hasRoute(SearchRoute::class) ||
+            it.hasRoute(PublicProfileRoute::class) ||
             it.hasRoute(CreateTribeRoute::class) ||
             it.hasRoute(TribeDetailRoute::class)
     } == true
@@ -124,7 +126,13 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                 )
             }
             composable<SearchRoute> {
-                SearchScreen(onBack = { tabsNav.popBackStack() })
+                SearchScreen(
+                    onBack = { tabsNav.popBackStack() },
+                    onOpenProfile = { userId -> tabsNav.navigate(PublicProfileRoute(userId)) }
+                )
+            }
+            composable<PublicProfileRoute> {
+                PublicProfileScreen(onBack = { tabsNav.popBackStack() })
             }
             composable<CreateTribeRoute> {
                 CreateTribeScreen(
