@@ -49,6 +49,7 @@ data class Ember(
     val expiresAt: Timestamp? = null,
     val echoCount: Int = 0,
     val coldMarkCount: Int = 0,
+    val whisperCount: Int = 0,
     val extended: Boolean = false,
     val echoedByMe: Boolean = false
 )

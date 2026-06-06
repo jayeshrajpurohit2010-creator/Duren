@@ -94,6 +94,18 @@ service cloud.firestore {
         allow create: if isOwner(userId);
         allow update, delete: if false;
       }
+
+      // Whispers — comments. Anyone authed can read + add; only the author edits/removes.
+      match /whispers/{whisperId} {
+        allow read: if isAuthed();
+        allow create: if isAuthed()
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500;
+        allow update: if false;
+        allow delete: if isAuthed() && resource.data.authorId == request.auth.uid;
+      }
     }
 
     // ===== Lanterns (anonymous 48h drift messages) =====

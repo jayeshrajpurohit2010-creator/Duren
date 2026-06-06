@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +48,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.ember.model.PostMode
+import com.duren.app.feature.whisper.WhisperThread
 import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
@@ -71,6 +74,8 @@ fun EmberCard(
 ) {
     var showColdMarkDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showWhispers by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     var zoomedMedia by remember { mutableStateOf<String?>(null) }
 
     if (showDeleteDialog) {
@@ -239,25 +244,43 @@ fun EmberCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Echo button + count
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = if (interactive) Modifier.clickable(onClick = onEcho) else Modifier
-                ) {
-                    Icon(
-                        imageVector = if (ember.echoedByMe) Icons.Filled.Favorite else Icons.Outlined.Favorite,
-                        contentDescription = if (ember.echoedByMe) "Un-echo" else "Echo",
-                        tint = if (ember.echoedByMe) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(DurenSpacing.space1))
-                    Text(
-                        text = ember.echoCount.toString(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (ember.echoedByMe) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                // Echo button + whisper toggle, grouped on the left
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = if (interactive) Modifier.clickable(onClick = onEcho) else Modifier
+                    ) {
+                        Icon(
+                            imageVector = if (ember.echoedByMe) Icons.Filled.Favorite else Icons.Outlined.Favorite,
+                            contentDescription = if (ember.echoedByMe) "Un-echo" else "Echo",
+                            tint = if (ember.echoedByMe) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(DurenSpacing.space1))
+                        Text(
+                            text = ember.echoCount.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (ember.echoedByMe) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(DurenSpacing.space4))
+
+                    // Whisper (comment) toggle — opens the inline thread below.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { showWhispers = !showWhispers }
+                    ) {
+                        Text(text = "💬", style = MaterialTheme.typography.labelMedium)
+                        Spacer(modifier = Modifier.width(DurenSpacing.space1))
+                        Text(
+                            text = ember.whisperCount.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 // Expiry timer
@@ -266,20 +289,57 @@ fun EmberCard(
                     extended = ember.extended
                 )
 
-                // Overflow → cold mark (hidden for non-interactive cards, e.g. own embers)
-                if (interactive) {
-                    IconButton(
-                        onClick = { showColdMarkDialog = true },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.MoreVert,
-                            contentDescription = "More options",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
+                // Overflow menu — Delete (own embers) and/or Report. Always present
+                // when there's an action, so it's a reliable trigger even where a
+                // long-press would be swallowed by the photo or echo heart.
+                if (canDelete || interactive) {
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.MoreVert,
+                                contentDescription = "More options",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            if (canDelete) {
+                                DropdownMenuItem(
+                                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteDialog = true
+                                    }
+                                )
+                            }
+                            if (interactive && !canDelete) {
+                                DropdownMenuItem(
+                                    text = { Text("Report") },
+                                    onClick = {
+                                        showMenu = false
+                                        showColdMarkDialog = true
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
+            }
+
+            // Inline whisper thread (lazily streamed only while expanded)
+            if (showWhispers) {
+                WhisperThread(
+                    emberId = ember.id,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = DurenSpacing.space3)
+                )
             }
         }
     }

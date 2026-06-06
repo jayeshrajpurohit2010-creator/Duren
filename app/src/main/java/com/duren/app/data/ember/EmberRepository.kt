@@ -4,6 +4,8 @@ import android.net.Uri
 import com.duren.app.core.DomainError
 import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.ember.model.PostMode
+import com.duren.app.data.ember.model.Whisper
+import com.google.firebase.firestore.Query.Direction
 import com.duren.app.data.media.MediaUploadRepository
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -117,6 +119,7 @@ class EmberRepository @Inject constructor(
                     "expiresAt" to expiresAt,
                     "echoCount" to 0,
                     "coldMarkCount" to 0,
+                    "whisperCount" to 0,
                     "extended" to false
                 )
             ).await()
@@ -201,6 +204,72 @@ class EmberRepository @Inject constructor(
         }
     }
 
+    /** Live whispers (comments) on an ember, oldest-first so the thread reads top-to-bottom. */
+    fun observeWhispers(emberId: String): Flow<List<Whisper>> = callbackFlow {
+        val reg = firestore.collection(EMBERS).document(emberId)
+            .collection(WHISPERS)
+            .orderBy("createdAt", Direction.ASCENDING)
+            .addSnapshotListener { snap, _ ->
+                val list = snap?.documents?.mapNotNull { doc ->
+                    val authorId = doc.getString("authorId") ?: return@mapNotNull null
+                    Whisper(
+                        id = doc.id,
+                        emberId = emberId,
+                        authorId = authorId,
+                        authorName = doc.getString("authorName") ?: "",
+                        authorUsername = doc.getString("authorUsername") ?: "",
+                        authorAvatarUrl = doc.getString("authorAvatarUrl") ?: "",
+                        authorAvatarColor = doc.getString("authorAvatarColor") ?: "#FF6B35",
+                        text = doc.getString("text") ?: "",
+                        isAnonymous = doc.getBoolean("isAnonymous") == true,
+                        createdAt = doc.getTimestamp("createdAt")
+                    )
+                } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { reg.remove() }
+    }
+
+    /** Add a whisper to an ember and bump its whisperCount. */
+    suspend fun addWhisper(emberId: String, text: String, isAnonymous: Boolean): Result<Unit> {
+        val user = auth.currentUser ?: return Result.failure(DomainError.NotAuthenticated)
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return Result.failure(DomainError.EmptyEmber)
+        return try {
+            val profileSnap = firestore.collection(PROFILES).document(user.uid).get().await()
+            val emberRef = firestore.collection(EMBERS).document(emberId)
+            emberRef.collection(WHISPERS).document().set(
+                mapOf(
+                    "authorId" to user.uid,
+                    "authorName" to if (isAnonymous) "" else (profileSnap.getString("displayName") ?: ""),
+                    "authorUsername" to if (isAnonymous) "" else (profileSnap.getString("username") ?: ""),
+                    "authorAvatarUrl" to if (isAnonymous) "" else (profileSnap.getString("avatarUrl") ?: ""),
+                    "authorAvatarColor" to if (isAnonymous) "#FF6B35" else (profileSnap.getString("avatarColor") ?: "#FF6B35"),
+                    "text" to trimmed.take(500),
+                    "isAnonymous" to isAnonymous,
+                    "createdAt" to FieldValue.serverTimestamp()
+                )
+            ).await()
+            emberRef.update("whisperCount", FieldValue.increment(1)).await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /** Delete the caller's own whisper and decrement the ember's whisperCount. */
+    suspend fun deleteWhisper(emberId: String, whisperId: String): Result<Unit> {
+        auth.currentUser ?: return Result.failure(DomainError.NotAuthenticated)
+        return try {
+            val emberRef = firestore.collection(EMBERS).document(emberId)
+            emberRef.collection(WHISPERS).document(whisperId).delete().await()
+            emberRef.update("whisperCount", FieldValue.increment(-1)).await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
     /** Echo Extension: 5+ echoes in the last 30 min → push expiry to 72h, once, silently. */
     private suspend fun maybeExtend(emberRef: DocumentReference) {
         val cutoff = Timestamp(Timestamp.now().seconds - EXTENSION_WINDOW_SECONDS, 0)
@@ -249,6 +318,7 @@ class EmberRepository @Inject constructor(
             expiresAt = getTimestamp("expiresAt"),
             echoCount = (getLong("echoCount") ?: 0L).toInt(),
             coldMarkCount = (getLong("coldMarkCount") ?: 0L).toInt(),
+            whisperCount = (getLong("whisperCount") ?: 0L).toInt(),
             extended = getBoolean("extended") == true
         )
     }
@@ -257,6 +327,7 @@ class EmberRepository @Inject constructor(
         const val EMBERS = "embers"
         const val ECHOES = "echoes"
         const val COLD_MARKS = "coldMarks"
+        const val WHISPERS = "whispers"
         const val PROFILES = "profiles"
 
         const val LIFESPAN_SECONDS = 48L * 3600          // 48h default
