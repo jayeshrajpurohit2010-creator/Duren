@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,12 +19,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
+import com.duren.app.ui.components.DurenMasthead
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -44,12 +43,7 @@ fun FeedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "The Clearing",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                title = { DurenMasthead(subtitle = "The Clearing") }
             )
         }
     ) { innerPadding ->
