@@ -15,7 +15,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +48,7 @@ fun FeedScreen(
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val tab by viewModel.tab.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -57,79 +62,126 @@ fun FeedScreen(
             )
         }
     ) { innerPadding ->
-        when (val state = uiState) {
-            is FeedUiState.Loading -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = DurenSpacing.space4),
-                    verticalArrangement = Arrangement.spacedBy(DurenSpacing.space3)
-                ) {
-                    repeat(3) {
-                        ShimmerBox(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp)
-                        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            FeedTabRow(selected = tab, onSelect = viewModel::selectTab)
+
+            when (val state = uiState) {
+                is FeedUiState.Loading -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(DurenSpacing.space4),
+                        verticalArrangement = Arrangement.spacedBy(DurenSpacing.space3)
+                    ) {
+                        repeat(3) {
+                            ShimmerBox(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(160.dp)
+                            )
+                        }
+                    }
+                }
+
+                is FeedUiState.Empty -> {
+                    // Empty copy follows the active tab so each surface reads true.
+                    val (title, body, emoji) = when (tab) {
+                        FeedTab.Campfire ->
+                            Triple("The clearing is still.", "Be the first ember.", "🏕️")
+                        FeedTab.BurningNow ->
+                            Triple("Nothing's caught fire yet.", "Echo a post to fan the flames.", "🔥")
+                        FeedTab.AboutToFade ->
+                            Triple("Nothing's fading right now.", "Posts appear here as they near their last hour.", "⏳")
+                        FeedTab.ColdEmbers ->
+                            Triple("No cold embers.", "Quiet, un-echoed posts gather here.", "❄️")
+                    }
+                    EmptyState(
+                        title = title,
+                        body = body,
+                        emoji = emoji,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                is FeedUiState.Content -> {
+                    val listState = rememberLazyListState()
+                    val totalItems = state.embers.size
+
+                    // Infinite scroll: trigger loadMore when nearing the end
+                    val shouldLoadMore by remember {
+                        derivedStateOf {
+                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+                            lastVisible != null && lastVisible.index >= totalItems - 3
+                        }
+                    }
+
+                    LaunchedEffect(shouldLoadMore) {
+                        if (shouldLoadMore) {
+                            viewModel.loadMore()
+                        }
+                    }
+
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            horizontal = DurenSpacing.space4,
+                            vertical = DurenSpacing.space4
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(DurenSpacing.space3)
+                    ) {
+                        items(
+                            items = state.embers,
+                            key = { ember -> ember.id }
+                        ) { ember ->
+                            EmberCard(
+                                ember = ember,
+                                onEcho = { viewModel.echo(ember.id) },
+                                onColdMark = { reason -> viewModel.coldMark(ember.id, reason) },
+                                canDelete = ember.authorId == viewModel.currentUserId,
+                                onDelete = { viewModel.deleteEmber(ember.id) }
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
 
-            is FeedUiState.Empty -> {
-                EmptyState(
-                    title = "The clearing is still.",
-                    body = "Be the first ember.",
-                    emoji = "🏕️",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                )
-            }
-
-            is FeedUiState.Content -> {
-                val listState = rememberLazyListState()
-                val totalItems = state.embers.size
-
-                // Infinite scroll: trigger loadMore when nearing the end
-                val shouldLoadMore by remember {
-                    derivedStateOf {
-                        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-                        lastVisible != null && lastVisible.index >= totalItems - 3
-                    }
+/**
+ * The four discovery tabs (design Screen 4). Text labels with a sliding teal
+ * underline mark the active one — no emoji, per the brand's anti-clutter aesthetic.
+ */
+@Composable
+private fun FeedTabRow(selected: FeedTab, onSelect: (FeedTab) -> Unit) {
+    ScrollableTabRow(
+        selectedTabIndex = selected.ordinal,
+        edgePadding = DurenSpacing.space4,
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.primary,
+        divider = {}
+    ) {
+        FeedTab.entries.forEach { feedTab ->
+            val active = feedTab == selected
+            Tab(
+                selected = active,
+                onClick = { onSelect(feedTab) },
+                text = {
+                    Text(
+                        text = feedTab.label,
+                        color = if (active) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
                 }
-
-                LaunchedEffect(shouldLoadMore) {
-                    if (shouldLoadMore) {
-                        viewModel.loadMore()
-                    }
-                }
-
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentPadding = PaddingValues(
-                        horizontal = DurenSpacing.space4,
-                        vertical = DurenSpacing.space4
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(DurenSpacing.space3)
-                ) {
-                    items(
-                        items = state.embers,
-                        key = { ember -> ember.id }
-                    ) { ember ->
-                        EmberCard(
-                            ember = ember,
-                            onEcho = { viewModel.echo(ember.id) },
-                            onColdMark = { reason -> viewModel.coldMark(ember.id, reason) },
-                            canDelete = ember.authorId == viewModel.currentUserId,
-                            onDelete = { viewModel.deleteEmber(ember.id) }
-                        )
-                    }
-                }
-            }
+            )
         }
     }
 }

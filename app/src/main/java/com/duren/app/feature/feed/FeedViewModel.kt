@@ -27,6 +27,18 @@ sealed interface FeedUiState {
 }
 
 /**
+ * The Clearing's discovery surfaces (design Screen 4). All four are client-side
+ * re-sorts of the same live feed — no extra queries, no backend. Labels only:
+ * the active tab is marked by a teal underline, not an emoji.
+ */
+enum class FeedTab(val label: String) {
+    Campfire("The Campfire"),
+    BurningNow("Burning Now"),
+    AboutToFade("About to Fade"),
+    ColdEmbers("Cold Embers")
+}
+
+/**
  * Drives The Clearing feed with infinite scroll, optimistic echo toggles,
  * and cold-mark delegation to [EmberRepository].
  */
@@ -51,6 +63,14 @@ class FeedViewModel @Inject constructor(
 
     /** Ember ids the user just deleted — hidden immediately, before the snapshot catches up. */
     private val deletedIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Which discovery tab is active. Pure client-side re-sort of the same feed. */
+    private val selectedTab = MutableStateFlow(FeedTab.Campfire)
+    val tab: StateFlow<FeedTab> = selectedTab
+
+    fun selectTab(newTab: FeedTab) {
+        selectedTab.value = newTab
+    }
 
     /** The signed-in uid, so the UI can show Delete only on the user's own embers. */
     val currentUserId: String? get() = emberRepository.currentUserId
@@ -83,8 +103,9 @@ class FeedViewModel @Inject constructor(
     val uiState: StateFlow<FeedUiState> = combine(
         hydratedList,
         pendingEchoIntents,
-        deletedIds
-    ) { rawList, intents, deleted ->
+        deletedIds,
+        selectedTab
+    ) { rawList, intents, deleted, currentTab ->
         // Drop embers the user just deleted (until the snapshot stops returning them).
         val list = if (deleted.isEmpty()) rawList else rawList.filterNot { it.id in deleted }
         // Reconcile: drop any pending intent the server has now caught up to, so
@@ -98,7 +119,20 @@ class FeedViewModel @Inject constructor(
             }
         }
 
-        val merged = list.map { ember ->
+        // Order by the active tab using snapshot values (NOT the optimistic count),
+        // so echo taps never reshuffle the list under the user's finger — only a
+        // fresh snapshot re-orders. Campfire is already heat-ranked by [rankByHeat].
+        val ordered = when (currentTab) {
+            FeedTab.Campfire -> list
+            FeedTab.BurningNow ->
+                list.filter { it.echoCount > 0 }.sortedByDescending { it.echoCount }
+            FeedTab.AboutToFade ->
+                list.sortedBy { it.expiresAt?.seconds ?: Long.MAX_VALUE }
+            FeedTab.ColdEmbers ->
+                list.sortedWith(compareBy({ it.echoCount }, { it.createdAt?.seconds ?: 0L }))
+        }
+
+        val merged = ordered.map { ember ->
             val desired = intents[ember.id]
             when {
                 desired == null || desired == ember.echoedByMe -> ember
