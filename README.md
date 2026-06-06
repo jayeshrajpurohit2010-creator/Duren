@@ -161,7 +161,7 @@ Full specs live in the Notion **Design System v2.0** and **Animation Bible v2.1*
 
 ## 👤 Founder
 
-**Jayesh Rajpurohit** — 16, solo founder, building Duren since April 2026.
+**Jayesh Rajpurohit** — 16, building Duren since April 2026.
 
 
 
