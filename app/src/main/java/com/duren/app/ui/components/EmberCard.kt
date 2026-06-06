@@ -1,5 +1,7 @@
 package com.duren.app.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,11 +34,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -77,6 +82,14 @@ fun EmberCard(
     var showWhispers by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var zoomedMedia by remember { mutableStateOf<String?>(null) }
+
+    // Echo-tap bounce (Animation Bible: scale 1.0 → 1.2 → 1.0 over ~0.15s).
+    val scope = rememberCoroutineScope()
+    val heartScale = remember { Animatable(1f) }
+    fun popHeart() = scope.launch {
+        heartScale.animateTo(1.2f, tween(75))
+        heartScale.animateTo(1f, tween(75))
+    }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -248,14 +261,20 @@ fun EmberCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = if (interactive) Modifier.clickable(onClick = onEcho) else Modifier
+                        modifier = if (interactive) {
+                            Modifier.clickable { popHeart(); onEcho() }
+                        } else {
+                            Modifier
+                        }
                     ) {
                         Icon(
                             imageVector = if (ember.echoedByMe) Icons.Filled.Favorite else Icons.Outlined.Favorite,
                             contentDescription = if (ember.echoedByMe) "Un-echo" else "Echo",
                             tint = if (ember.echoedByMe) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier
+                                .size(20.dp)
+                                .graphicsLayer { scaleX = heartScale.value; scaleY = heartScale.value }
                         )
                         Spacer(modifier = Modifier.width(DurenSpacing.space1))
                         Text(
