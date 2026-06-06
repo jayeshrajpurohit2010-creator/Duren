@@ -126,6 +126,28 @@ class EmberRepository @Inject constructor(
         }
     }
 
+    /** The signed-in user's uid, or null. Lets the UI decide which embers are deletable. */
+    val currentUserId: String?
+        get() = auth.currentUser?.uid
+
+    /**
+     * Permanently delete an ember the caller authored. The Firestore rule
+     * (`allow delete: if resource.data.authorId == request.auth.uid`) is the real
+     * guard; this just refuses early if the uid obviously doesn't match.
+     */
+    suspend fun deleteEmber(emberId: String): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        return try {
+            val ref = firestore.collection(EMBERS).document(emberId)
+            val snap = ref.get().await()
+            if (snap.getString("authorId") != uid) return Result.failure(DomainError.Unknown)
+            ref.delete().await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
     /** Toggle the current user's echo. Returns the new echoed state. */
     suspend fun toggleEcho(emberId: String): Result<Boolean> {
         val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)

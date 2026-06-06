@@ -3,6 +3,7 @@ package com.duren.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +19,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,10 +64,33 @@ fun EmberCard(
     modifier: Modifier = Modifier,
     // When false (e.g. your own embers on Presence), the echo + report controls
     // render as plain, non-tappable status so there's no dead/confusing UI.
-    interactive: Boolean = true
+    interactive: Boolean = true,
+    // When true (the user authored this ember), a long-press offers Delete.
+    canDelete: Boolean = false,
+    onDelete: () -> Unit = {}
 ) {
     var showColdMarkDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var zoomedMedia by remember { mutableStateOf<String?>(null) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete ember?") },
+            text = { Text("This ember will be gone for good. It can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    onDelete()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     zoomedMedia?.let { media ->
         FullScreenImageViewer(imageUrl = media, onDismiss = { zoomedMedia = null })
@@ -92,7 +119,13 @@ fun EmberCard(
         tonalElevation = 0.dp
     ) {
         Column(
-            modifier = Modifier.padding(DurenSpacing.space4)
+            modifier = Modifier
+                .padding(DurenSpacing.space4)
+                .pointerInput(canDelete) {
+                    if (canDelete) {
+                        detectTapGestures(onLongPress = { showDeleteDialog = true })
+                    }
+                }
         ) {
             // Header: avatar + identity + temperature badge
             Row(

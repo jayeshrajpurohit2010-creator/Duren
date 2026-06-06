@@ -49,6 +49,12 @@ class FeedViewModel @Inject constructor(
      */
     private val pendingEchoIntents = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
+    /** Ember ids the user just deleted — hidden immediately, before the snapshot catches up. */
+    private val deletedIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /** The signed-in uid, so the UI can show Delete only on the user's own embers. */
+    val currentUserId: String? get() = emberRepository.currentUserId
+
     /**
      * Hot flow of hydrated ember lists — [Ember.echoedByMe] resolved in parallel
      * (off the main thread, in this coroutine) for every incoming snapshot.
@@ -74,7 +80,13 @@ class FeedViewModel @Inject constructor(
      * Starts as [FeedUiState.Loading]; transitions to [Empty] or [Content] once
      * the first hydrated snapshot arrives.
      */
-    val uiState: StateFlow<FeedUiState> = combine(hydratedList, pendingEchoIntents) { list, intents ->
+    val uiState: StateFlow<FeedUiState> = combine(
+        hydratedList,
+        pendingEchoIntents,
+        deletedIds
+    ) { rawList, intents, deleted ->
+        // Drop embers the user just deleted (until the snapshot stops returning them).
+        val list = if (deleted.isEmpty()) rawList else rawList.filterNot { it.id in deleted }
         // Reconcile: drop any pending intent the server has now caught up to, so
         // we never double-apply an override on top of an already-correct snapshot.
         if (intents.isNotEmpty()) {
@@ -168,6 +180,20 @@ class FeedViewModel @Inject constructor(
     fun coldMark(emberId: String, reason: String) {
         viewModelScope.launch {
             emberRepository.coldMark(emberId, reason)
+        }
+    }
+
+    /**
+     * Delete one of the user's own embers. Hidden from the feed instantly; if the
+     * server delete fails (e.g. rules not yet deployed) the id is un-hidden so the
+     * ember reappears rather than silently lying that it's gone.
+     */
+    fun deleteEmber(emberId: String) {
+        deletedIds.update { it + emberId }
+        viewModelScope.launch {
+            emberRepository.deleteEmber(emberId).onFailure {
+                deletedIds.update { ids -> ids - emberId }
+            }
         }
     }
 

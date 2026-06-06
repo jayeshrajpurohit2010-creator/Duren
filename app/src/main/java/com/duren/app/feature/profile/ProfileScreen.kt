@@ -152,7 +152,9 @@ fun ProfileScreen(
                             ember = ember,
                             onEcho = {},
                             onColdMark = {},
-                            interactive = false
+                            interactive = false,
+                            canDelete = true,
+                            onDelete = { viewModel.deleteEmber(ember.id) }
                         )
                         Spacer(Modifier.height(DurenSpacing.space3))
                     }
