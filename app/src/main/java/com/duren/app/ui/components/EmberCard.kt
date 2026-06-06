@@ -63,6 +63,11 @@ fun EmberCard(
     interactive: Boolean = true
 ) {
     var showColdMarkDialog by remember { mutableStateOf(false) }
+    var zoomedMedia by remember { mutableStateOf<String?>(null) }
+
+    zoomedMedia?.let { media ->
+        FullScreenImageViewer(imageUrl = media, onDismiss = { zoomedMedia = null })
+    }
 
     if (showColdMarkDialog) {
         ColdMarkDialog(
@@ -170,6 +175,8 @@ fun EmberCard(
                     .fillMaxWidth()
                     .heightIn(max = 320.dp)
                     .clip(DurenShapes.medium)
+                    // Tap any photo to open it full-screen with pinch-to-zoom.
+                    .clickable { zoomedMedia = media }
                 if (media.startsWith("data:")) {
                     // Inline (Base64) media — decode locally, no network fetch.
                     val bitmap = remember(media) { decodeDataUri(media) }
