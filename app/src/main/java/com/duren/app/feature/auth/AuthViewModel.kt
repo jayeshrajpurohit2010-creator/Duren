@@ -84,13 +84,21 @@ class AuthViewModel @Inject constructor(
     }
 
     fun sendPasswordReset() {
-        val email = _form.value.email
-        if (email.isBlank()) return
+        val email = _form.value.email.trim()
+        // Previously this returned silently on a blank email, so tapping "Forgot
+        // password?" before typing an email did nothing at all — the #1 "it doesn't
+        // work" cause. Now it tells the user what to do, and reports real failures.
+        if (email.isBlank()) {
+            _form.update { it.copy(ui = AuthUiState.Error("Type your email above first, then tap Forgot password.")) }
+            return
+        }
+        _form.update { it.copy(ui = AuthUiState.Loading) }
         viewModelScope.launch {
-            authRepository.sendPasswordReset(email)
-            _form.update {
-                it.copy(ui = AuthUiState.Error("If that email exists, a reset link is on the way."))
-            }
+            val message = authRepository.sendPasswordReset(email).fold(
+                onSuccess = { "If that email exists, a reset link is on the way. Check your spam folder." },
+                onFailure = { "Couldn't send the reset email right now. Check your connection and try again." }
+            )
+            _form.update { it.copy(ui = AuthUiState.Error(message)) }
         }
     }
 }

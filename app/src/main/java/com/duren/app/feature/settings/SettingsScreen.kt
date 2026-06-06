@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -35,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,6 +66,14 @@ fun SettingsScreen(
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val avatarUploading by viewModel.avatarUploading.collectAsStateWithLifecycle()
+    val passwordResetSent by viewModel.passwordResetSent.collectAsStateWithLifecycle()
+    var showResetDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val appVersion = remember {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: "—"
+    }
     val avatarPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri -> if (uri != null) viewModel.setAvatarPhoto(uri) }
@@ -193,6 +204,9 @@ fun SettingsScreen(
 
             // ===== Account =====
             SectionHeader("Account")
+            IdentityRow("Username", "@${p.username}")
+            IdentityRow("Email", p.email)
+            Spacer(Modifier.height(DurenSpacing.space3))
             OutlinedTextField(
                 value = displayName,
                 onValueChange = { displayName = it },
@@ -224,6 +238,25 @@ fun SettingsScreen(
             ) {
                 Text("Save account", fontWeight = FontWeight.Medium)
             }
+            Spacer(Modifier.height(DurenSpacing.space2))
+            OutlinedButton(
+                onClick = { showResetDialog = true },
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+            ) {
+                Text("Change password")
+            }
+
+            SectionDivider()
+
+            // ===== About =====
+            SectionHeader("About")
+            IdentityRow("Version", appVersion)
+            Spacer(Modifier.height(DurenSpacing.space2))
+            Text(
+                "Ephemeral. Present. Belong.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             SectionDivider()
 
@@ -238,6 +271,57 @@ fun SettingsScreen(
             }
             Spacer(Modifier.height(DurenSpacing.space6))
         }
+
+        if (showResetDialog) {
+            AlertDialog(
+                onDismissRequest = { showResetDialog = false },
+                title = { Text("Change password") },
+                text = { Text("We'll email a reset link to ${p.email}. Open it to set a new password.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.sendPasswordReset(p.email)
+                        showResetDialog = false
+                    }) { Text("Send link") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
+
+        if (passwordResetSent) {
+            AlertDialog(
+                onDismissRequest = viewModel::acknowledgePasswordReset,
+                title = { Text("Check your inbox") },
+                text = { Text("If ${p.email} is on file, a reset link is on its way. It can take a minute to arrive.") },
+                confirmButton = {
+                    TextButton(onClick = viewModel::acknowledgePasswordReset) { Text("Got it") }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun IdentityRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = DurenSpacing.space1),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

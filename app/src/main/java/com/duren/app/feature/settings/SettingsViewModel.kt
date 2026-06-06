@@ -72,5 +72,19 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.updateAccount(displayName, bio, pronouns)
     }
 
+    /** True once a password-reset email has been dispatched, so the UI can confirm it. */
+    private val _passwordResetSent = MutableStateFlow(false)
+    val passwordResetSent: StateFlow<Boolean> = _passwordResetSent.asStateFlow()
+
+    /** Email a password-reset link to the signed-in user's address. */
+    fun sendPasswordReset(email: String) = viewModelScope.launch {
+        authRepository.sendPasswordReset(email)
+        _passwordResetSent.value = true
+    }
+
+    fun acknowledgePasswordReset() {
+        _passwordResetSent.value = false
+    }
+
     fun signOut() = authRepository.signOut()
 }
