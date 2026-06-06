@@ -27,7 +27,7 @@ class PublicProfileViewModel @Inject constructor(
     private val nestRepository: NestRepository
 ) : ViewModel() {
 
-    private val userId: String = savedStateHandle.toRoute<PublicProfileRoute>().userId
+    val userId: String = savedStateHandle.toRoute<PublicProfileRoute>().userId
 
     val profile: StateFlow<Profile?> = profileRepository.observeProfile(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

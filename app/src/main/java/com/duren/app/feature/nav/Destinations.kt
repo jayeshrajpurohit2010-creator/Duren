@@ -43,6 +43,18 @@ data class PublicProfileRoute(val userId: String)
 object NestRoute
 
 @Serializable
+object SignalRoute
+
+@Serializable
+object ChatListRoute
+
+@Serializable
+data class ChatRoute(val otherUserId: String)
+
+@Serializable
+object LanternsRoute
+
+@Serializable
 object CreateTribeRoute
 
 @Serializable

@@ -79,6 +79,7 @@ private fun NestAction(
 @Composable
 fun PublicProfileScreen(
     onBack: () -> Unit,
+    onOpenChat: (String) -> Unit = {},
     viewModel: PublicProfileViewModel = hiltViewModel()
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
@@ -142,6 +143,13 @@ fun PublicProfileScreen(
                     onAccept = viewModel::acceptRequest,
                     onDecline = viewModel::declineRequest
                 )
+                if (relation == NestRelation.Member) {
+                    Spacer(Modifier.height(DurenSpacing.space2))
+                    Button(
+                        onClick = { onOpenChat(viewModel.userId) },
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) { Text("Message") }
+                }
                 Spacer(Modifier.height(DurenSpacing.space6))
                 HorizontalDivider()
                 Spacer(Modifier.height(DurenSpacing.space4))

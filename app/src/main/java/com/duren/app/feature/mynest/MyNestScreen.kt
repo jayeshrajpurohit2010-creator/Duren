@@ -39,6 +39,7 @@ import com.duren.app.ui.theme.DurenSpacing
 fun MyNestScreen(
     onBack: () -> Unit,
     onOpenProfile: (String) -> Unit = {},
+    onOpenChat: (String) -> Unit = {},
     viewModel: MyNestViewModel = hiltViewModel()
 ) {
     val incoming by viewModel.incoming.collectAsStateWithLifecycle()
@@ -110,6 +111,11 @@ fun MyNestScreen(
                         avatarColor = member.avatarColor,
                         onClick = { onOpenProfile(member.uid) }
                     ) {
+                        Button(
+                            onClick = { onOpenChat(member.uid) },
+                            modifier = Modifier.height(40.dp)
+                        ) { Text("Message") }
+                        Spacer(Modifier.width(DurenSpacing.space2))
                         OutlinedButton(
                             onClick = { viewModel.remove(member.uid) },
                             modifier = Modifier.height(40.dp)

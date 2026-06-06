@@ -23,13 +23,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.duren.app.feature.compose.ComposeScreen
+import com.duren.app.feature.dm.ChatListScreen
+import com.duren.app.feature.dm.ChatScreen
 import com.duren.app.feature.feed.FeedScreen
 import com.duren.app.feature.mynest.MyNestScreen
+import com.duren.app.feature.mynest.NestFeedScreen
+import com.duren.app.feature.nest.NestScreen
 import com.duren.app.feature.profile.ProfileScreen
 import com.duren.app.feature.profile.PublicProfileScreen
 import com.duren.app.feature.search.SearchScreen
 import com.duren.app.feature.settings.SettingsScreen
-import com.duren.app.feature.tabs.NestTabScreen
+import com.duren.app.feature.signal.SignalScreen
 import com.duren.app.feature.tribes.CreateTribeScreen
 import com.duren.app.feature.tribes.TribeDetailScreen
 import com.duren.app.feature.tribes.TribesScreen
@@ -61,6 +65,10 @@ fun MainScaffold(onSignedOut: () -> Unit) {
             it.hasRoute(SearchRoute::class) ||
             it.hasRoute(PublicProfileRoute::class) ||
             it.hasRoute(NestRoute::class) ||
+            it.hasRoute(SignalRoute::class) ||
+            it.hasRoute(ChatListRoute::class) ||
+            it.hasRoute(ChatRoute::class) ||
+            it.hasRoute(LanternsRoute::class) ||
             it.hasRoute(CreateTribeRoute::class) ||
             it.hasRoute(TribeDetailRoute::class)
     } == true
@@ -95,7 +103,11 @@ fun MainScaffold(onSignedOut: () -> Unit) {
             modifier = Modifier.padding(padding)
         ) {
             composable<StateTab> {
-                FeedScreen(onOpenSearch = { tabsNav.navigate(SearchRoute) })
+                FeedScreen(
+                    onOpenSearch = { tabsNav.navigate(SearchRoute) },
+                    onOpenSignal = { tabsNav.navigate(SignalRoute) },
+                    onOpenMessages = { tabsNav.navigate(ChatListRoute) }
+                )
             }
             composable<TribesTab> {
                 TribesScreen(
@@ -114,7 +126,16 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                     }
                 )
             }
-            composable<NestTab> { NestTabScreen() }
+            composable<NestTab> {
+                NestFeedScreen(
+                    onOpenProfile = { userId -> tabsNav.navigate(PublicProfileRoute(userId)) },
+                    onOpenChat = { userId -> tabsNav.navigate(ChatRoute(userId)) },
+                    onOpenMessages = { tabsNav.navigate(ChatListRoute) },
+                    onOpenRequests = { tabsNav.navigate(NestRoute) },
+                    onOpenLanterns = { tabsNav.navigate(LanternsRoute) },
+                    onOpenSearch = { tabsNav.navigate(SearchRoute) }
+                )
+            }
             composable<PresenceTab> {
                 ProfileScreen(
                     onSignedOut = onSignedOut,
@@ -135,13 +156,36 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                 )
             }
             composable<PublicProfileRoute> {
-                PublicProfileScreen(onBack = { tabsNav.popBackStack() })
+                PublicProfileScreen(
+                    onBack = { tabsNav.popBackStack() },
+                    onOpenChat = { userId -> tabsNav.navigate(ChatRoute(userId)) }
+                )
             }
             composable<NestRoute> {
                 MyNestScreen(
                     onBack = { tabsNav.popBackStack() },
-                    onOpenProfile = { userId -> tabsNav.navigate(PublicProfileRoute(userId)) }
+                    onOpenProfile = { userId -> tabsNav.navigate(PublicProfileRoute(userId)) },
+                    onOpenChat = { userId -> tabsNav.navigate(ChatRoute(userId)) }
                 )
+            }
+            composable<SignalRoute> {
+                SignalScreen(
+                    onBack = { tabsNav.popBackStack() },
+                    onOpenProfile = { userId -> tabsNav.navigate(PublicProfileRoute(userId)) },
+                    onOpenChat = { userId -> tabsNav.navigate(ChatRoute(userId)) }
+                )
+            }
+            composable<ChatListRoute> {
+                ChatListScreen(
+                    onBack = { tabsNav.popBackStack() },
+                    onOpenChat = { userId -> tabsNav.navigate(ChatRoute(userId)) }
+                )
+            }
+            composable<ChatRoute> {
+                ChatScreen(onBack = { tabsNav.popBackStack() })
+            }
+            composable<LanternsRoute> {
+                NestScreen(onBack = { tabsNav.popBackStack() })
             }
             composable<CreateTribeRoute> {
                 CreateTribeScreen(

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.Ember
+import com.duren.app.data.signal.SignalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -45,8 +46,13 @@ enum class FeedTab(val label: String) {
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class FeedViewModel @Inject constructor(
-    private val emberRepository: EmberRepository
+    private val emberRepository: EmberRepository,
+    signalRepository: SignalRepository
 ) : ViewModel() {
+
+    /** Unread Signal count for the bell badge in the top bar. */
+    val unreadSignals: StateFlow<Int> = signalRepository.observeUnreadCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** Current Firestore limit; bumped by [loadMore]. */
     private val limit = MutableStateFlow(20L)

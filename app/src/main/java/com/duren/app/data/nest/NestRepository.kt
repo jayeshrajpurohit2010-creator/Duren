@@ -3,6 +3,8 @@ package com.duren.app.data.nest
 import com.duren.app.core.DomainError
 import com.duren.app.data.nest.model.NestRelation
 import com.duren.app.data.nest.model.NestRequest
+import com.duren.app.data.signal.SignalRepository
+import com.duren.app.data.signal.model.SignalType
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.auth.FirebaseAuth
@@ -28,7 +30,8 @@ import javax.inject.Singleton
 @Singleton
 class NestRepository @Inject constructor(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val signalRepository: SignalRepository
 ) {
 
     private val uid: String? get() = auth.currentUser?.uid
@@ -53,6 +56,7 @@ class NestRepository @Inject constructor(
                     "createdAt" to FieldValue.serverTimestamp()
                 )
             ).await()
+            signalRepository.notify(toUserId, SignalType.NestRequest)
             Result.success(Unit)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
@@ -75,6 +79,7 @@ class NestRepository @Inject constructor(
             memberRef(me, fromUserId).set(mapOf("since" to since)).await()
             memberRef(fromUserId, me).set(mapOf("since" to since)).await()
             requestRef(fromUserId, me).delete().await()
+            signalRepository.notify(fromUserId, SignalType.NestAccepted)
             Result.success(Unit)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)

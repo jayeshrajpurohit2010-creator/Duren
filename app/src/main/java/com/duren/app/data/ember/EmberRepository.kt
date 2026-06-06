@@ -7,6 +7,8 @@ import com.duren.app.data.ember.model.PostMode
 import com.duren.app.data.ember.model.Whisper
 import com.google.firebase.firestore.Query.Direction
 import com.duren.app.data.media.MediaUploadRepository
+import com.duren.app.data.signal.SignalRepository
+import com.duren.app.data.signal.model.SignalType
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
@@ -17,6 +19,7 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,7 +39,8 @@ import javax.inject.Singleton
 class EmberRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val mediaUploader: MediaUploadRepository
+    private val mediaUploader: MediaUploadRepository,
+    private val signalRepository: SignalRepository
 ) {
 
     /** The Clearing: newest non-expired embers across all tribes. Re-query with a larger [limit] to paginate. */
@@ -84,6 +88,21 @@ class EmberRepository @Inject constructor(
             .whereEqualTo("authorId", uid)
             .limit(limit)
     )
+
+    /**
+     * The Nest feed: non-expired embers authored by the given Nest members, newest
+     * first. Uses a single-field `whereIn` (no orderBy ⇒ no composite index; sorted
+     * on-device by [feedQuery]). Firestore caps `whereIn` at 30 values, which is
+     * plenty for a trusted Nest; if it ever grows past that we'll page it.
+     */
+    fun observeFromAuthors(authorIds: List<String>, limit: Long): Flow<List<Ember>> {
+        if (authorIds.isEmpty()) return flowOf(emptyList())
+        return feedQuery(
+            firestore.collection(EMBERS)
+                .whereIn("authorId", authorIds.take(30))
+                .limit(limit)
+        )
+    }
 
     suspend fun createEmber(
         text: String,
@@ -180,7 +199,14 @@ class EmberRepository @Inject constructor(
                     true
                 }
             }.await()
-            if (nowEchoed) runCatching { maybeExtend(emberRef) }
+            if (nowEchoed) {
+                runCatching { maybeExtend(emberRef) }
+                // Tell the author someone echoed (skipped automatically if it's you).
+                runCatching {
+                    val authorId = emberRef.get().await().getString("authorId")
+                    if (authorId != null) signalRepository.notify(authorId, SignalType.Echo, emberId)
+                }
+            }
             Result.success(nowEchoed)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
@@ -262,6 +288,16 @@ class EmberRepository @Inject constructor(
                 )
             ).await()
             emberRef.update("whisperCount", FieldValue.increment(1)).await()
+            // Notify the author — but NOT for anonymous whispers: the Signal would
+            // carry the whisperer's uid and quietly unmask them.
+            if (!isAnonymous) {
+                runCatching {
+                    val authorId = emberRef.get().await().getString("authorId")
+                    if (authorId != null) {
+                        signalRepository.notify(authorId, SignalType.Whisper, emberId, preview = trimmed.take(120))
+                    }
+                }
+            }
             Result.success(Unit)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)

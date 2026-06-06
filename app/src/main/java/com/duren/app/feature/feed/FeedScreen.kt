@@ -12,6 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.MailOutline
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,10 +55,13 @@ import kotlinx.coroutines.delay
 @Composable
 fun FeedScreen(
     onOpenSearch: () -> Unit = {},
+    onOpenSignal: () -> Unit = {},
+    onOpenMessages: () -> Unit = {},
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val tab by viewModel.tab.collectAsStateWithLifecycle()
+    val unreadSignals by viewModel.unreadSignals.collectAsStateWithLifecycle()
 
     // Night Economy phase for the global Clearing follows the viewer's own device
     // timezone (free, no backend). Re-checked each minute so the banner appears and
@@ -72,6 +79,20 @@ fun FeedScreen(
             TopAppBar(
                 title = { DurenMasthead(subtitle = "The Clearing") },
                 actions = {
+                    IconButton(onClick = onOpenSignal) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadSignals > 0) {
+                                    Badge { Text(if (unreadSignals > 9) "9+" else "$unreadSignals") }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Outlined.Notifications, contentDescription = "Signals")
+                        }
+                    }
+                    IconButton(onClick = onOpenMessages) {
+                        Icon(Icons.Outlined.MailOutline, contentDescription = "Messages")
+                    }
                     IconButton(onClick = onOpenSearch) {
                         Icon(Icons.Filled.Search, contentDescription = "Find people")
                     }
