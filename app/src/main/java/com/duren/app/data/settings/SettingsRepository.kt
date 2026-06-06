@@ -24,6 +24,9 @@ class SettingsRepository @Inject constructor(
 
     suspend fun updateAvatarColor(hex: String): Result<Unit> = update("avatarColor" to hex)
 
+    /** Store a custom avatar image (a `data:` URI) on the profile. */
+    suspend fun updateAvatarUrl(avatarUrl: String): Result<Unit> = update("avatarUrl" to avatarUrl)
+
     suspend fun updatePrivacy(
         showLantern: Boolean,
         showMoodCanvas: Boolean,

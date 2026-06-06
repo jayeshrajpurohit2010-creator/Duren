@@ -42,7 +42,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.ember.model.PostMode
-import com.duren.app.ui.theme.DurenAvatarColors
 import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
@@ -107,21 +106,12 @@ fun EmberCard(
                         Text(text = "🎭", style = MaterialTheme.typography.bodyMedium)
                     }
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(DurenAvatarColors.colorForHex(ember.authorAvatarColor)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = ember.authorAvatarUrl,
-                            contentDescription = "Avatar for ${ember.authorName}",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                        )
-                    }
+                    DurenAvatar(
+                        avatarUrl = ember.authorAvatarUrl,
+                        fallbackColorHex = ember.authorAvatarColor,
+                        size = 40.dp,
+                        contentDescription = "Avatar for ${ember.authorName}"
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(DurenSpacing.space3))

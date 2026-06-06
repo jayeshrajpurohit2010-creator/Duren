@@ -1,15 +1,19 @@
 package com.duren.app.feature.settings
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duren.app.data.auth.AuthRepository
+import com.duren.app.data.media.MediaUploadRepository
 import com.duren.app.data.profile.ProfileRepository
 import com.duren.app.data.profile.model.Profile
 import com.duren.app.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -21,6 +25,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val settingsRepository: SettingsRepository,
+    private val mediaUploadRepository: MediaUploadRepository,
     profileRepository: ProfileRepository
 ) : ViewModel() {
 
@@ -29,6 +34,18 @@ class SettingsViewModel @Inject constructor(
             if (user == null) flowOf(null) else profileRepository.observeProfile(user.uid)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** True while a picked avatar photo is being compressed + saved. */
+    private val _avatarUploading = MutableStateFlow(false)
+    val avatarUploading: StateFlow<Boolean> = _avatarUploading.asStateFlow()
+
+    /** Compress the picked photo to a small data URI and save it as the avatar. */
+    fun setAvatarPhoto(uri: Uri) = viewModelScope.launch {
+        _avatarUploading.value = true
+        mediaUploadRepository.uploadAvatar(uri)
+            .onSuccess { dataUri -> settingsRepository.updateAvatarUrl(dataUri) }
+        _avatarUploading.value = false
+    }
 
     fun setAccent(hex: String) = viewModelScope.launch {
         settingsRepository.updateAccentColor(hex)

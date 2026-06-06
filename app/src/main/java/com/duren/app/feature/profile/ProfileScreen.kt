@@ -1,7 +1,5 @@
 package com.duren.app.feature.profile
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,10 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.duren.app.ui.animation.ShimmerBox
+import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.EmberCard
-import com.duren.app.ui.theme.DurenAvatarColors
 import com.duren.app.ui.theme.DurenSpacing
 
 @Composable
@@ -73,21 +70,12 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(96.dp)
-                                .clip(CircleShape)
-                                .background(DurenAvatarColors.colorForHex(p.avatarColor)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AsyncImage(
-                                model = p.avatarUrl,
-                                contentDescription = "Avatar",
-                                modifier = Modifier
-                                    .size(96.dp)
-                                    .clip(CircleShape)
-                            )
-                        }
+                        DurenAvatar(
+                            avatarUrl = p.avatarUrl,
+                            fallbackColorHex = p.avatarColor,
+                            size = 96.dp,
+                            contentDescription = "Avatar"
+                        )
                         Spacer(Modifier.height(DurenSpacing.space4))
                         Text(
                             text = p.displayName.ifBlank { p.username },

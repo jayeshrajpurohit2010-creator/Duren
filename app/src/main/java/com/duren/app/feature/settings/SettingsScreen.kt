@@ -1,5 +1,8 @@
 package com.duren.app.feature.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.theme.DurenAccent
 import com.duren.app.ui.theme.DurenAvatarColors
 import com.duren.app.ui.theme.DurenSpacing
@@ -58,6 +62,10 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
+    val avatarUploading by viewModel.avatarUploading.collectAsStateWithLifecycle()
+    val avatarPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> if (uri != null) viewModel.setAvatarPhoto(uri) }
 
     Scaffold(
         topBar = {
@@ -123,7 +131,33 @@ fun SettingsScreen(
             SectionDivider()
 
             // ===== Avatar =====
-            SectionHeader("Avatar color")
+            SectionHeader("Avatar")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DurenAvatar(
+                    avatarUrl = p.avatarUrl,
+                    fallbackColorHex = p.avatarColor,
+                    size = 64.dp,
+                    contentDescription = "Your avatar"
+                )
+                Spacer(Modifier.size(DurenSpacing.space4))
+                OutlinedButton(
+                    onClick = {
+                        avatarPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    enabled = !avatarUploading
+                ) {
+                    Text(if (avatarUploading) "Updating…" else "Change photo")
+                }
+            }
+            Spacer(Modifier.height(DurenSpacing.space4))
+            Text(
+                "Or pick a color",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(DurenSpacing.space2))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space3),
                 verticalArrangement = Arrangement.spacedBy(DurenSpacing.space3)

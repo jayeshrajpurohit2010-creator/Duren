@@ -14,41 +14,59 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Turns a picked image into a self-contained `data:` URI for the ember document.
+ * Turns a picked image into a self-contained `data:` URI.
  *
  * Phase 1 MVP stores media inline: the picked [Uri] is downscaled and JPEG-
  * compressed on-device, then Base64-encoded into a `data:image/jpeg;base64,…`
- * string. That string is written straight onto the ember (the [EmberCard]
- * decodes it locally), so media needs no external host — it rides on the same
- * Firebase Auth + Firestore path that's already working.
+ * string. That string is written straight onto the ember (the EmberCard decodes
+ * it locally) or the profile, so media needs no external host — it rides on the
+ * same Firebase Auth + Firestore path that's already working.
+ *
+ * [uploadImage] is tuned for post media (≤1080px, ~500 KB). [uploadAvatar] is
+ * tuned for profile photos (≤256px, ~60 KB) so an avatar stays small enough to
+ * sit on the profile doc and denormalise onto embers without bloat.
  *
  * The compression budget keeps the encoded payload well under Firestore's 1 MB
  * document limit. Failures surface as [DomainError.MediaUploadFailed] so the
- * caller never writes an ember pointing at media that didn't materialise.
+ * caller never writes a reference to media that didn't materialise.
  *
- * Trade-off: inline media bloats document reads, so this is an MVP bridge —
- * swap [uploadImage] back to a hosted uploader (Cloudinary/Storage) once a
- * verified cloud or a Blaze bucket is available; nothing else has to change.
+ * Trade-off: inline media bloats document reads — an MVP bridge. Swapping back
+ * to a hosted uploader later changes only these two methods; callers and the
+ * `data:`-aware renderers stay the same.
  */
 @Singleton
 class MediaUploadRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    suspend fun uploadImage(uri: Uri): Result<String> = withContext(Dispatchers.IO) {
+    /** Post media — larger budget for full-bleed photos. */
+    suspend fun uploadImage(uri: Uri): Result<String> =
+        encode(uri, MAX_DIMEN, MAX_JPEG_BYTES, START_QUALITY, MIN_QUALITY)
+
+    /** Profile avatar — small budget so it can ride on the profile + ember docs. */
+    suspend fun uploadAvatar(uri: Uri): Result<String> =
+        encode(uri, AVATAR_DIMEN, AVATAR_MAX_BYTES, AVATAR_START_QUALITY, AVATAR_MIN_QUALITY)
+
+    private suspend fun encode(
+        uri: Uri,
+        maxDimen: Int,
+        maxBytes: Int,
+        startQuality: Int,
+        minQuality: Int
+    ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val bitmap = decodeBounded(uri)
+            val bitmap = decodeBounded(uri, maxDimen)
                 ?: return@withContext Result.failure(DomainError.MediaUploadFailed)
-            val scaled = downscale(bitmap, MAX_DIMEN)
+            val scaled = downscale(bitmap, maxDimen)
 
             // Step quality down until the JPEG fits the inline budget.
-            var quality = START_QUALITY
+            var quality = startQuality
             var jpeg = scaled.toJpeg(quality)
-            while (jpeg.size > MAX_JPEG_BYTES && quality > MIN_QUALITY) {
+            while (jpeg.size > maxBytes && quality > minQuality) {
                 quality -= QUALITY_STEP
                 jpeg = scaled.toJpeg(quality)
             }
-            if (jpeg.size > MAX_JPEG_BYTES) {
+            if (jpeg.size > maxBytes) {
                 return@withContext Result.failure(DomainError.MediaUploadFailed)
             }
 
@@ -60,7 +78,7 @@ class MediaUploadRepository @Inject constructor(
     }
 
     /** Decode with an [BitmapFactory.Options.inSampleSize] so huge photos never OOM. */
-    private fun decodeBounded(uri: Uri): Bitmap? {
+    private fun decodeBounded(uri: Uri, maxDimen: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, bounds)
@@ -68,7 +86,7 @@ class MediaUploadRepository @Inject constructor(
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
         val opts = BitmapFactory.Options().apply {
-            inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, MAX_DIMEN)
+            inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, maxDimen)
         }
         return context.contentResolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, opts)
@@ -104,10 +122,18 @@ class MediaUploadRepository @Inject constructor(
     }
 
     private companion object {
+        // Post media
         const val MAX_DIMEN = 1080            // longest edge after downscale
         const val START_QUALITY = 80
         const val MIN_QUALITY = 35
-        const val QUALITY_STEP = 10
         const val MAX_JPEG_BYTES = 500 * 1024  // ~680 KB once Base64'd — safely < 1 MB doc cap
+
+        // Avatar (small — denormalises onto embers)
+        const val AVATAR_DIMEN = 256
+        const val AVATAR_START_QUALITY = 80
+        const val AVATAR_MIN_QUALITY = 40
+        const val AVATAR_MAX_BYTES = 60 * 1024  // ~80 KB once Base64'd
+
+        const val QUALITY_STEP = 10
     }
 }
