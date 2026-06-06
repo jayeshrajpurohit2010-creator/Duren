@@ -1,5 +1,11 @@
 package com.duren.app.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -9,6 +15,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -67,9 +74,23 @@ fun ExpiryTimer(
         }
     }
 
+    // In the final stretch (< 30 min) the ember is "fading" — a slow flicker
+    // makes the countdown feel alive without shouting. Steady otherwise.
+    val critical = remainingSeconds in 1 until THIRTY_MIN_SECONDS
+    val flicker = rememberInfiniteTransition(label = "expiry")
+    val flickerAlpha by flicker.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "expiry-alpha"
+    )
+
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        modifier = modifier
+        modifier = modifier.alpha(if (critical) flickerAlpha else 1f)
     )
 }

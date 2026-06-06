@@ -1,6 +1,5 @@
 package com.duren.app.feature.mynest
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -143,7 +143,7 @@ private fun PersonRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pressableCard(onClick = onClick)
             .padding(vertical = DurenSpacing.space2),
         verticalAlignment = Alignment.CenterVertically
     ) {

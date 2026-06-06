@@ -1,6 +1,5 @@
 package com.duren.app.feature.search
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.profile.model.Profile
+import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -114,7 +114,7 @@ private fun PersonRow(person: Profile, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pressableCard(onClick = onClick)
             .padding(vertical = DurenSpacing.space2),
         verticalAlignment = Alignment.CenterVertically
     ) {

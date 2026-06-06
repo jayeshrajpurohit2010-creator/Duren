@@ -1,6 +1,11 @@
 package com.duren.app.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.launch
@@ -91,6 +97,26 @@ fun EmberCard(
         heartScale.animateTo(1f, tween(75))
     }
 
+    // Heat tiers: 5+ echoes warm the border to the accent; 20+ ("Drum Circle")
+    // gets a slow gold breathing pulse. Only the gold tier actually animates.
+    val drumCircle = ember.echoCount >= 20
+    val heatTransition = rememberInfiniteTransition(label = "heat")
+    val drumPulse by heatTransition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "drum"
+    )
+    val heatBorderColor = when {
+        drumCircle -> Color(0xFFFFC24D).copy(alpha = drumPulse)
+        ember.echoCount >= 5 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+        else -> DurenColors.BorderDefault
+    }
+    val heatBorderWidth = if (drumCircle) 2.dp else 1.dp
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -128,8 +154,8 @@ fun EmberCard(
         modifier = modifier
             .fillMaxWidth()
             .border(
-                width = 1.dp,
-                color = DurenColors.BorderDefault,
+                width = heatBorderWidth,
+                color = heatBorderColor,
                 shape = DurenShapes.large
             ),
         shape = DurenShapes.large,
