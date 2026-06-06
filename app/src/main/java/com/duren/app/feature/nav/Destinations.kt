@@ -40,6 +40,9 @@ object SearchRoute
 data class PublicProfileRoute(val userId: String)
 
 @Serializable
+object NestRoute
+
+@Serializable
 object CreateTribeRoute
 
 @Serializable

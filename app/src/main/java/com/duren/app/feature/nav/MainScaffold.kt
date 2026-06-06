@@ -24,6 +24,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.duren.app.feature.compose.ComposeScreen
 import com.duren.app.feature.feed.FeedScreen
+import com.duren.app.feature.mynest.MyNestScreen
 import com.duren.app.feature.profile.ProfileScreen
 import com.duren.app.feature.profile.PublicProfileScreen
 import com.duren.app.feature.search.SearchScreen
@@ -59,6 +60,7 @@ fun MainScaffold(onSignedOut: () -> Unit) {
         it.hasRoute(SettingsRoute::class) ||
             it.hasRoute(SearchRoute::class) ||
             it.hasRoute(PublicProfileRoute::class) ||
+            it.hasRoute(NestRoute::class) ||
             it.hasRoute(CreateTribeRoute::class) ||
             it.hasRoute(TribeDetailRoute::class)
     } == true
@@ -116,7 +118,8 @@ fun MainScaffold(onSignedOut: () -> Unit) {
             composable<PresenceTab> {
                 ProfileScreen(
                     onSignedOut = onSignedOut,
-                    onOpenSettings = { tabsNav.navigate(SettingsRoute) }
+                    onOpenSettings = { tabsNav.navigate(SettingsRoute) },
+                    onOpenNest = { tabsNav.navigate(NestRoute) }
                 )
             }
             composable<SettingsRoute> {
@@ -133,6 +136,12 @@ fun MainScaffold(onSignedOut: () -> Unit) {
             }
             composable<PublicProfileRoute> {
                 PublicProfileScreen(onBack = { tabsNav.popBackStack() })
+            }
+            composable<NestRoute> {
+                MyNestScreen(
+                    onBack = { tabsNav.popBackStack() },
+                    onOpenProfile = { userId -> tabsNav.navigate(PublicProfileRoute(userId)) }
+                )
             }
             composable<CreateTribeRoute> {
                 CreateTribeScreen(

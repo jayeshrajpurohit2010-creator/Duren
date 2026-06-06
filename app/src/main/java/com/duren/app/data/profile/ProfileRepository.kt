@@ -76,6 +76,13 @@ class ProfileRepository @Inject constructor(
         }
     }
 
+    /** One-shot profile read, for hydrating lists of uids (Nest members, requests). */
+    suspend fun getProfile(uid: String): Profile? = try {
+        firestore.collection(PROFILES).document(uid).get().await().toProfile()
+    } catch (_: Exception) {
+        null
+    }
+
     private fun DocumentSnapshot.toProfile(): Profile? {
         val username = getString("username") ?: return null
         return Profile(

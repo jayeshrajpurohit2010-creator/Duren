@@ -6,15 +6,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -26,9 +30,50 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duren.app.data.nest.model.NestRelation
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.DurenSpacing
+
+@Composable
+private fun NestAction(
+    relation: NestRelation,
+    onAdd: () -> Unit,
+    onCancel: () -> Unit,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit
+) {
+    when (relation) {
+        NestRelation.Self -> Unit
+        NestRelation.None -> Button(
+            onClick = onAdd,
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) { Text("Add to Nest") }
+
+        NestRelation.OutgoingPending -> OutlinedButton(
+            onClick = onCancel,
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+        ) { Text("Request sent · tap to cancel") }
+
+        NestRelation.IncomingPending -> Row(Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onAccept,
+                modifier = Modifier.weight(1f).height(48.dp)
+            ) { Text("Accept") }
+            Spacer(Modifier.width(DurenSpacing.space3))
+            OutlinedButton(
+                onClick = onDecline,
+                modifier = Modifier.weight(1f).height(48.dp)
+            ) { Text("Decline") }
+        }
+
+        NestRelation.Member -> Text(
+            text = "✓ In your Nest",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +83,7 @@ fun PublicProfileScreen(
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val embers by viewModel.embers.collectAsStateWithLifecycle()
+    val relation by viewModel.relation.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -88,6 +134,14 @@ fun PublicProfileScreen(
                         )
                     }
                 }
+                Spacer(Modifier.height(DurenSpacing.space4))
+                NestAction(
+                    relation = relation,
+                    onAdd = viewModel::addToNest,
+                    onCancel = viewModel::cancelRequest,
+                    onAccept = viewModel::acceptRequest,
+                    onDecline = viewModel::declineRequest
+                )
                 Spacer(Modifier.height(DurenSpacing.space6))
                 HorizontalDivider()
                 Spacer(Modifier.height(DurenSpacing.space4))

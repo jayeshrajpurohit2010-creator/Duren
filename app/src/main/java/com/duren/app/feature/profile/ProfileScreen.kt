@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -37,6 +38,7 @@ import com.duren.app.ui.theme.DurenSpacing
 fun ProfileScreen(
     onSignedOut: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenNest: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
@@ -103,6 +105,15 @@ fun ProfileScreen(
                         )
                         Spacer(Modifier.height(DurenSpacing.space8))
                         Button(
+                            onClick = onOpenNest,
+                            modifier = Modifier.fillMaxWidth().height(52.dp)
+                        ) {
+                            Icon(Icons.Filled.Favorite, contentDescription = null)
+                            Spacer(Modifier.size(DurenSpacing.space2))
+                            Text("Your Nest", fontWeight = FontWeight.Medium)
+                        }
+                        Spacer(Modifier.height(DurenSpacing.space3))
+                        OutlinedButton(
                             onClick = onOpenSettings,
                             modifier = Modifier.fillMaxWidth().height(52.dp)
                         ) {
