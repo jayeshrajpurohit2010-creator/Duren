@@ -1,9 +1,11 @@
 package com.duren.app.data.auth
 
 import com.duren.app.core.DomainError
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FieldValue
@@ -136,6 +138,36 @@ class AuthRepository @Inject constructor(
         } catch (_: FirebaseAuthInvalidUserException) {
             delay(800)
             Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /**
+     * Permanently delete the signed-in user. Re-authenticates with the password first so the
+     * delete never hits a "recent login required" error, then removes the Firestore footprint
+     * (profile doc + username sentinel) while still authed, and finally deletes the auth user.
+     */
+    suspend fun deleteAccount(password: String): Result<Unit> {
+        val user = auth.currentUser ?: return Result.failure(DomainError.NotAuthenticated)
+        val email = user.email ?: return Result.failure(DomainError.Unknown)
+        return try {
+            user.reauthenticate(EmailAuthProvider.getCredential(email, password)).await()
+
+            val uid = user.uid
+            val profileRef = firestore.collection(PROFILES).document(uid)
+            val username = runCatching { profileRef.get().await().getString("username") }.getOrNull()
+            runCatching { profileRef.delete().await() }
+            if (!username.isNullOrBlank()) {
+                runCatching { firestore.collection(USERNAMES).document(username).delete().await() }
+            }
+
+            user.delete().await()
+            Result.success(Unit)
+        } catch (_: FirebaseAuthInvalidCredentialsException) {
+            Result.failure(DomainError.InvalidCredentials)
+        } catch (_: FirebaseAuthRecentLoginRequiredException) {
+            Result.failure(DomainError.InvalidCredentials)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
         }

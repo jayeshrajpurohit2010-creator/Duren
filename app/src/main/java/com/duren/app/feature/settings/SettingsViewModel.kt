@@ -86,5 +86,33 @@ class SettingsViewModel @Inject constructor(
         _passwordResetSent.value = false
     }
 
+    /** True while the account deletion is in flight (re-auth + Firestore + auth delete). */
+    private val _deleting = MutableStateFlow(false)
+    val deleting: StateFlow<Boolean> = _deleting.asStateFlow()
+
+    /** Set once deletion completes so the UI can route back to the auth screen. */
+    private val _accountDeleted = MutableStateFlow(false)
+    val accountDeleted: StateFlow<Boolean> = _accountDeleted.asStateFlow()
+
+    /** Non-null when the last delete attempt failed (e.g. wrong password). */
+    private val _deleteError = MutableStateFlow<String?>(null)
+    val deleteError: StateFlow<String?> = _deleteError.asStateFlow()
+
+    fun deleteAccount(password: String) = viewModelScope.launch {
+        _deleting.value = true
+        _deleteError.value = null
+        authRepository.deleteAccount(password)
+            .onSuccess { _accountDeleted.value = true }
+            .onFailure {
+                _deleteError.value =
+                    "Couldn't delete your account. Check your password and try again."
+            }
+        _deleting.value = false
+    }
+
+    fun clearDeleteError() {
+        _deleteError.value = null
+    }
+
     fun signOut() = authRepository.signOut()
 }

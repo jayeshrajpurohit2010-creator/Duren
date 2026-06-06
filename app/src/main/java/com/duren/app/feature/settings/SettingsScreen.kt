@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,7 +69,17 @@ fun SettingsScreen(
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val avatarUploading by viewModel.avatarUploading.collectAsStateWithLifecycle()
     val passwordResetSent by viewModel.passwordResetSent.collectAsStateWithLifecycle()
+    val deleting by viewModel.deleting.collectAsStateWithLifecycle()
+    val accountDeleted by viewModel.accountDeleted.collectAsStateWithLifecycle()
+    val deleteError by viewModel.deleteError.collectAsStateWithLifecycle()
     var showResetDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var deletePassword by remember { mutableStateOf("") }
+
+    LaunchedEffect(accountDeleted) {
+        if (accountDeleted) onSignedOut()
+    }
+
     val context = LocalContext.current
     val appVersion = remember {
         runCatching {
@@ -269,6 +281,16 @@ fun SettingsScreen(
             ) {
                 Text("Log out")
             }
+
+            SectionDivider()
+
+            SectionHeader("Danger zone")
+            TextButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+            ) {
+                Text("Delete my account", color = MaterialTheme.colorScheme.error)
+            }
             Spacer(Modifier.height(DurenSpacing.space6))
         }
 
@@ -296,6 +318,66 @@ fun SettingsScreen(
                 text = { Text("If ${p.email} is on file, a reset link is on its way. It can take a minute to arrive.") },
                 confirmButton = {
                     TextButton(onClick = viewModel::acknowledgePasswordReset) { Text("Got it") }
+                }
+            )
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    if (!deleting) {
+                        showDeleteDialog = false
+                        deletePassword = ""
+                        viewModel.clearDeleteError()
+                    }
+                },
+                title = { Text("Delete your account?") },
+                text = {
+                    Column {
+                        Text(
+                            "This permanently deletes your presence and frees @${p.username}. " +
+                                "Embers you've shared fade on their own. This can't be undone."
+                        )
+                        Spacer(Modifier.height(DurenSpacing.space3))
+                        OutlinedTextField(
+                            value = deletePassword,
+                            onValueChange = { deletePassword = it },
+                            label = { Text("Confirm your password") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        val err = deleteError
+                        if (err != null) {
+                            Spacer(Modifier.height(DurenSpacing.space2))
+                            Text(
+                                err,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { viewModel.deleteAccount(deletePassword) },
+                        enabled = deletePassword.isNotBlank() && !deleting
+                    ) {
+                        Text(
+                            if (deleting) "Deleting…" else "Delete",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteDialog = false
+                            deletePassword = ""
+                            viewModel.clearDeleteError()
+                        },
+                        enabled = !deleting
+                    ) { Text("Cancel") }
                 }
             )
         }
