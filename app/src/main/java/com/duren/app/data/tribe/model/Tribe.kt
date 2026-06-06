@@ -16,5 +16,11 @@ data class Tribe(
     val createdBy: String = "",
     val createdAt: Timestamp? = null,
     val memberCount: Int = 0,
-    val isMember: Boolean = false
+    val isMember: Boolean = false,
+    // Night Economy: a tribe can opt into Dead Hours, anchored to its own home
+    // timezone (IANA id, e.g. "Asia/Kolkata"). Blank/disabled = no quiet hours.
+    // Evaluated entirely on-device via [com.duren.app.core.time.NightEconomy] —
+    // no server, no per-country job. Older tribe docs default to off.
+    val homeTimezone: String = "",
+    val deadHoursEnabled: Boolean = false
 )

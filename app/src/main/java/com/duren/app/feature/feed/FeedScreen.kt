@@ -25,16 +25,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duren.app.core.time.NightEconomy
+import com.duren.app.core.time.NightPhase
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.DurenMasthead
 import com.duren.app.ui.components.EmberCard
+import com.duren.app.ui.components.NightBanner
 import com.duren.app.ui.theme.DurenSpacing
+import kotlinx.coroutines.delay
 
 /**
  * The Clearing — the global ephemeral feed.
@@ -49,6 +55,17 @@ fun FeedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val tab by viewModel.tab.collectAsStateWithLifecycle()
+
+    // Night Economy phase for the global Clearing follows the viewer's own device
+    // timezone (free, no backend). Re-checked each minute so the banner appears and
+    // clears on its own as 2 AM / 6 AM roll past.
+    var nightPhase by remember { mutableStateOf(NightEconomy.phaseFor(null)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            nightPhase = NightEconomy.phaseFor(null)
+            delay(60_000)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -67,6 +84,8 @@ fun FeedScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            NightBanner(phase = nightPhase)
+
             FeedTabRow(selected = tab, onSelect = viewModel::selectTab)
 
             when (val state = uiState) {
