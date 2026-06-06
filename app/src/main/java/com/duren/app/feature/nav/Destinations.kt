@@ -34,6 +34,9 @@ object PresenceTab
 object SettingsRoute
 
 @Serializable
+object SearchRoute
+
+@Serializable
 object CreateTribeRoute
 
 @Serializable
