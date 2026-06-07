@@ -66,10 +66,11 @@ fun ComposeScreen(
     val myTribes by viewModel.myTribes.collectAsStateWithLifecycle()
 
     // Local compose-field state
-    var bodyText by remember { mutableStateOf("") }
+    var bodyText by rememberSaveable { mutableStateOf("") }
     var selectedTribe by remember { mutableStateOf<Tribe?>(null) }
     var selectedMode by remember { mutableStateOf(PostMode.Named) }
-    var mediaUri by remember { mutableStateOf<Uri?>(null) }
+    // Uri is Parcelable, so rememberSaveable keeps the captured photo across rotation.
+    var mediaUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // Camera-first: the composer opens straight to the camera (BeReal-style). The
     // user captures a moment or skips to the text/gallery form.

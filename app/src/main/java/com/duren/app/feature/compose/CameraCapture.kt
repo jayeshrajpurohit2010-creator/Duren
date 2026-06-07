@@ -152,10 +152,13 @@ private fun CameraPreviewSurface(
     val previewView = remember {
         PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
     }
+    // Held so teardown can unbind without re-blocking on the provider future.
+    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
 
     // (Re)bind whenever the lens flips.
     LaunchedEffect(lensFacing) {
         val provider = ProcessCameraProvider.getInstance(context).awaitProvider()
+        cameraProvider = provider
         val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
         val selector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
         runCatching {
@@ -164,9 +167,7 @@ private fun CameraPreviewSurface(
         }
     }
     DisposableEffect(Unit) {
-        onDispose {
-            runCatching { ProcessCameraProvider.getInstance(context).get().unbindAll() }
-        }
+        onDispose { runCatching { cameraProvider?.unbindAll() } }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
