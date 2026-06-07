@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.dm.model.DmMessage
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 import com.google.firebase.Timestamp
@@ -102,9 +102,9 @@ fun ChatScreen(
                         },
                         enabled = input.isNotBlank()
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
+                        DurenIcon(
+                            DurenIcon.Send,
+                            size = 22.dp,
                             tint = if (input.isNotBlank()) {
                                 MaterialTheme.colorScheme.primary
                             } else {

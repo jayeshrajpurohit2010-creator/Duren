@@ -10,14 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.MailOutline
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -40,6 +35,7 @@ import com.duren.app.core.time.NightEconomy
 import com.duren.app.core.time.NightPhase
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.DurenMasthead
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.components.NightBanner
@@ -87,14 +83,15 @@ fun FeedScreen(
                                 }
                             }
                         ) {
-                            Icon(Icons.Outlined.Notifications, contentDescription = "Signals")
+                            DurenIcon(DurenIcon.Bell, size = 22.dp)
                         }
                     }
                     IconButton(onClick = onOpenMessages) {
-                        Icon(Icons.Outlined.MailOutline, contentDescription = "Messages")
+                        // DMs are "Expiring Embers" — the speech-bubble whisper glyph.
+                        DurenIcon(DurenIcon.Whisper, size = 22.dp)
                     }
                     IconButton(onClick = onOpenSearch) {
-                        Icon(Icons.Filled.Search, contentDescription = "Find people")
+                        DurenIcon(DurenIcon.Search, size = 22.dp)
                     }
                 }
             )

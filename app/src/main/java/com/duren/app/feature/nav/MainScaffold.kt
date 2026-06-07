@@ -1,13 +1,6 @@
 package com.duren.app.feature.nav
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -15,7 +8,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import com.duren.app.ui.components.DurenIcon
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -41,7 +35,7 @@ import com.duren.app.feature.tribes.TribesScreen
 private data class TabSpec<T : Any>(
     val route: T,
     val label: String,
-    val icon: ImageVector
+    val icon: DurenIcon
 )
 
 @Composable
@@ -49,12 +43,12 @@ fun MainScaffold(onSignedOut: () -> Unit) {
     val tabsNav = rememberNavController()
 
     val tabs = listOf(
-        // Placeholder icons from icons-core; a later pass swaps in custom Duren icons.
-        TabSpec(StateTab, "Clearing", Icons.Outlined.Home),
-        TabSpec(TribesTab, "Tribes", Icons.Outlined.Star),
-        TabSpec(ComposeTab, "Compose", Icons.Outlined.Add),
-        TabSpec(NestTab, "Nest", Icons.Outlined.Favorite),
-        TabSpec(PresenceTab, "Presence", Icons.Outlined.Person)
+        // Duren's own hand-drawn glyphs (design export `Icon.*`), not Material.
+        TabSpec(StateTab, "Clearing", DurenIcon.Ember),
+        TabSpec(TribesTab, "Tribes", DurenIcon.Tribe),
+        TabSpec(ComposeTab, "Compose", DurenIcon.Plus),
+        TabSpec(NestTab, "Nest", DurenIcon.Nest),
+        TabSpec(PresenceTab, "Presence", DurenIcon.Presence)
     )
 
     val current by tabsNav.currentBackStackEntryAsState()
@@ -89,7 +83,7 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            icon = { DurenIcon(tab.icon, size = 24.dp) },
                             label = { Text(tab.label) }
                         )
                     }
