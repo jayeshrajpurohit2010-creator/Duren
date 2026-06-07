@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,10 +71,25 @@ fun ComposeScreen(
     var selectedMode by remember { mutableStateOf(PostMode.Named) }
     var mediaUri by remember { mutableStateOf<Uri?>(null) }
 
+    // Camera-first: the composer opens straight to the camera (BeReal-style). The
+    // user captures a moment or skips to the text/gallery form.
+    var cameraOpen by rememberSaveable { mutableStateOf(true) }
+
     // Photo picker launcher
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri -> if (uri != null) mediaUri = uri }
+
+    if (cameraOpen) {
+        CameraCapture(
+            onCaptured = { uri ->
+                mediaUri = uri
+                cameraOpen = false
+            },
+            onSkip = { cameraOpen = false }
+        )
+        return
+    }
 
     // React to PostState.Posted
     LaunchedEffect(postState) {
@@ -84,6 +100,7 @@ fun ComposeScreen(
             mediaUri = null
             selectedTribe = null
             selectedMode = PostMode.Named
+            cameraOpen = true // next ember starts at the camera again
             onPosted()
         }
     }
@@ -182,20 +199,28 @@ fun ComposeScreen(
             // Media section
             Column(verticalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
                 if (mediaUri == null) {
-                    OutlinedButton(
-                        onClick = {
-                            photoPicker.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    Row(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
+                        OutlinedButton(
+                            onClick = { cameraOpen = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Camera")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                photoPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = DurenSpacing.space2)
                             )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = DurenSpacing.space2)
-                        )
-                        Text("Add image")
+                            Text("Gallery")
+                        }
                     }
                 } else {
                     Box {

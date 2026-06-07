@@ -34,8 +34,12 @@ class NestFeedViewModel @Inject constructor(
 
     val currentUserId: String? get() = emberRepository.currentUserId
 
+    /** One shared member-id stream so we open a single Firestore listener, not two. */
+    private val memberIds: StateFlow<List<String>> = nestRepository.observeMemberIds()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** The current user's Nest members (avatar row). */
-    val members: StateFlow<List<Profile>> = nestRepository.observeMemberIds()
+    val members: StateFlow<List<Profile>> = memberIds
         .map { ids -> ids.mapNotNull { profileRepository.getProfile(it) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -45,7 +49,7 @@ class NestFeedViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** Embers authored by Nest members, newest first, with my echo state hydrated. */
-    val feed: StateFlow<List<Ember>> = nestRepository.observeMemberIds()
+    val feed: StateFlow<List<Ember>> = memberIds
         .flatMapLatest { ids -> emberRepository.observeFromAuthors(ids, FEED_LIMIT) }
         .map { embers ->
             coroutineScope {

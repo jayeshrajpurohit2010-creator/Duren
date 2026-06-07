@@ -5,6 +5,7 @@ import com.duren.app.data.signal.model.SignalType
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query.Direction
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -62,7 +63,11 @@ class SignalRepository @Inject constructor(
     fun observeSignals(): Flow<List<Signal>> {
         val me = auth.currentUser?.uid ?: return flowOf(emptyList())
         return callbackFlow {
-            val reg = itemsRef(me).addSnapshotListener { snap, _ ->
+            // Bound the listener: newest 100 Signals (single-field index, no composite).
+            val reg = itemsRef(me)
+                .orderBy("createdAt", Direction.DESCENDING)
+                .limit(100)
+                .addSnapshotListener { snap, _ ->
                 val list = snap?.documents?.map { doc ->
                     Signal(
                         id = doc.id,

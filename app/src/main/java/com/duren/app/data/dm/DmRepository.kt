@@ -109,7 +109,9 @@ class DmRepository @Inject constructor(
             //    so a single batch wouldn't satisfy that dependency).
             chatRef(chatId).set(
                 mapOf(
-                    "participants" to listOf(me, otherUserId),
+                    // Must match the chatId ordering AND the rule's order-sensitive
+                    // participants equality check, or the second sender is denied.
+                    "participants" to listOf(me, otherUserId).sorted(),
                     "lastMessage" to body.take(140),
                     "lastMessageAt" to now,
                     "lastSenderId" to me,
@@ -125,7 +127,9 @@ class DmRepository @Inject constructor(
                     "expiresAt" to expires
                 )
             ).await()
-            signalRepository.notify(otherUserId, SignalType.Dm, preview = body.take(120))
+            // Deliberately no preview text: the message itself expires in 48h, so a
+            // copy of it must never linger in the (non-expiring) notification doc.
+            signalRepository.notify(otherUserId, SignalType.Dm)
             Result.success(Unit)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)

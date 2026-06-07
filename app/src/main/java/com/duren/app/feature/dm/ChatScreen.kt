@@ -93,8 +93,12 @@ fun ChatScreen(
                     Spacer(Modifier.width(DurenSpacing.space2))
                     IconButton(
                         onClick = {
-                            viewModel.send(input)
+                            val pending = input
                             input = ""
+                            // Optimistic clear, but restore the text if the send fails.
+                            viewModel.send(pending) { failed ->
+                                if (input.isBlank()) input = failed
+                            }
                         },
                         enabled = input.isNotBlank()
                     ) {

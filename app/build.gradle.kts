@@ -17,8 +17,8 @@ android {
         applicationId = "com.duren"
         minSdk = 24
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.5.0-brand"
+        versionCode = 6
+        versionName = "0.6.0-camera"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -111,6 +111,12 @@ dependencies {
 
     // Networking (Cloudinary uploads)
     implementation(libs.okhttp)
+
+    // CameraX — the BeReal-style camera-first composer
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
 
     // Tests
     testImplementation(libs.junit)

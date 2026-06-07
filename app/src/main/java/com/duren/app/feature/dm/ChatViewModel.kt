@@ -41,10 +41,15 @@ class ChatViewModel @Inject constructor(
     val seenByOther: StateFlow<Boolean> = dmRepository.observeSeenByOther(otherUserId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    fun send(text: String) {
+    /** Sends the message; [onFailure] fires (with the trimmed body) if it didn't go
+     *  through, so the composer can put the text back instead of silently dropping it. */
+    fun send(text: String, onFailure: (String) -> Unit = {}) {
         val body = text.trim()
         if (body.isEmpty()) return
-        viewModelScope.launch { dmRepository.sendMessage(otherUserId, body) }
+        viewModelScope.launch {
+            val result = dmRepository.sendMessage(otherUserId, body)
+            if (result.isFailure) onFailure(body)
+        }
     }
 
     /** Mark the thread seen (clears my unread + lets the other side see their ticks fill). */

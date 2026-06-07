@@ -294,7 +294,9 @@ class EmberRepository @Inject constructor(
                 runCatching {
                     val authorId = emberRef.get().await().getString("authorId")
                     if (authorId != null) {
-                        signalRepository.notify(authorId, SignalType.Whisper, emberId, preview = trimmed.take(120))
+                        // No preview text: the whisper lives on the ember (which
+                        // expires); the non-expiring Signal must not keep a copy.
+                        signalRepository.notify(authorId, SignalType.Whisper, emberId)
                     }
                 }
             }
