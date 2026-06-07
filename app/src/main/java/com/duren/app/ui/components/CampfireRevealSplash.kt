@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -166,6 +167,18 @@ fun CampfireRevealSplash(
                 modifier = Modifier.alpha(capAlpha)
             )
         }
+
+        // Skip hint (design: "tap to enter the clearing"), fading in once revealed.
+        Text(
+            text = "tap to enter the clearing",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFFB4B4BB),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 48.dp)
+                .alpha(capAlpha)
+        )
     }
 }
 
