@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.PostMode
 import com.duren.app.data.tribe.model.Tribe
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -215,9 +215,9 @@ fun ComposeScreen(
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = null,
+                            DurenIcon(
+                                DurenIcon.Plus,
+                                size = 18.dp,
                                 modifier = Modifier.padding(end = DurenSpacing.space2)
                             )
                             Text("Gallery")

@@ -15,12 +15,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MailOutline
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -40,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.profile.model.Profile
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
@@ -70,10 +67,10 @@ fun NestFeedScreen(
                 actions = {
                     IconButton(onClick = onOpenLanterns) { Text("🏮") }
                     IconButton(onClick = onOpenMessages) {
-                        Icon(Icons.Outlined.MailOutline, contentDescription = "Messages")
+                        DurenIcon(DurenIcon.Whisper, size = 22.dp)
                     }
                     IconButton(onClick = onOpenSearch) {
-                        Icon(Icons.Outlined.Search, contentDescription = "Find people")
+                        DurenIcon(DurenIcon.Search, size = 22.dp)
                     }
                 }
             )

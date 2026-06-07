@@ -11,12 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -36,6 +33,7 @@ import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.animation.pressableCard
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -56,7 +54,7 @@ fun TribesScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateTribe) {
-                Icon(Icons.Filled.Add, contentDescription = "Create tribe")
+                DurenIcon(DurenIcon.Plus, size = 24.dp)
             }
         }
     ) { padding ->

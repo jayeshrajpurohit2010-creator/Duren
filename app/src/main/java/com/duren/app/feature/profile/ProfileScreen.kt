@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -31,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -117,7 +117,7 @@ fun ProfileScreen(
                             onClick = onOpenSettings,
                             modifier = Modifier.fillMaxWidth().height(52.dp)
                         ) {
-                            Icon(Icons.Filled.Settings, contentDescription = null)
+                            DurenIcon(DurenIcon.Settings, size = 20.dp)
                             Spacer(Modifier.size(DurenSpacing.space2))
                             Text("Settings", fontWeight = FontWeight.Medium)
                         }

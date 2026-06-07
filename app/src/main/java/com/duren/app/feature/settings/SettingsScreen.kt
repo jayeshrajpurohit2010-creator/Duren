@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenAccent
 import com.duren.app.ui.theme.DurenAvatarColors
 import com.duren.app.ui.theme.DurenSpacing
@@ -451,9 +451,9 @@ private fun Swatch(color: Color, selected: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         if (selected) {
-            Icon(
-                Icons.Filled.Check,
-                contentDescription = "Selected",
+            DurenIcon(
+                DurenIcon.Check,
+                size = 18.dp,
                 tint = Color(0xFF1A1A1A)
             )
         }

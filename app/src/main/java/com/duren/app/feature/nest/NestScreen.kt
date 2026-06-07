@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.lantern.model.Lantern
 import com.duren.app.ui.animation.EmptyState
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.ExpiryTimer
 import com.duren.app.ui.theme.DurenColors
@@ -86,7 +86,7 @@ fun NestScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showLightSheet = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Light a lantern")
+                DurenIcon(DurenIcon.Plus, size = 24.dp)
             }
         }
     ) { padding ->

@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.profile.model.Profile
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,7 +72,7 @@ fun SearchScreen(
                     .fillMaxWidth()
                     .padding(vertical = DurenSpacing.space2),
                 placeholder = { Text("Search by name or @username") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                leadingIcon = { DurenIcon(DurenIcon.Search, size = 20.dp) },
                 singleLine = true
             )
 
