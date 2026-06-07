@@ -61,6 +61,16 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // Emit a properly named artifact, e.g. Duren-0.7.0-splash-debug.apk, instead of
+    // the generic app-debug.apk. (versionName already carries the -debug suffix.)
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl)
+                .outputFileName = "Duren-${variant.versionName}.apk"
+        }
+    }
 }
 
 dependencies {
