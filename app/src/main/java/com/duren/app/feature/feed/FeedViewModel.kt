@@ -67,6 +67,13 @@ class FeedViewModel @Inject constructor(
      */
     private val pendingEchoIntents = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
+    /**
+     * Pending optimistic kindling bumps: the set of ember ids the user just kindled
+     * locally. Cleared once the Firestore snapshot catches up (kindlingCount rises by 1)
+     * or if the write fails (revert). Kindling is write-once so there is no "un-kindle."
+     */
+    private val pendingKindlingIds = MutableStateFlow<Set<String>>(emptySet())
+
     /** Ember ids the user just deleted — hidden immediately, before the snapshot catches up. */
     private val deletedIds = MutableStateFlow<Set<String>>(emptySet())
 
@@ -107,11 +114,9 @@ class FeedViewModel @Inject constructor(
      * the first hydrated snapshot arrives.
      */
     val uiState: StateFlow<FeedUiState> = combine(
-        hydratedList,
-        pendingEchoIntents,
-        deletedIds,
-        selectedTab
-    ) { rawList, intents, deleted, currentTab ->
+        combine(hydratedList, pendingEchoIntents, deletedIds) { a, b, c -> Triple(a, b, c) },
+        combine(selectedTab, pendingKindlingIds) { a, b -> Pair(a, b) }
+    ) { (rawList, intents, deleted), (currentTab, kindlingIds) ->
         // Drop embers the user just deleted (until the snapshot stops returning them).
         val list = if (deleted.isEmpty()) rawList else rawList.filterNot { it.id in deleted }
         // Reconcile: drop any pending intent the server has now caught up to, so
@@ -122,6 +127,17 @@ class FeedViewModel @Inject constructor(
             }
             if (reconciled.size != intents.size) {
                 pendingEchoIntents.value = reconciled
+            }
+        }
+        // Drop kindling optimism once the snapshot count has caught up.
+        if (kindlingIds.isNotEmpty()) {
+            val reconciled = kindlingIds.filter { id ->
+                // If the snapshot already reflects kindlingCount > 0 for this ember,
+                // assume the write landed and clear the local optimism.
+                list.firstOrNull { it.id == id }?.kindlingCount == 0
+            }.toSet()
+            if (reconciled.size != kindlingIds.size) {
+                pendingKindlingIds.value = reconciled
             }
         }
 
@@ -140,7 +156,8 @@ class FeedViewModel @Inject constructor(
 
         val merged = ordered.map { ember ->
             val desired = intents[ember.id]
-            when {
+            val kindledOptimistic = ember.id in kindlingIds
+            val withEcho = when {
                 desired == null || desired == ember.echoedByMe -> ember
                 else -> {
                     // Apply optimistic override and nudge the count so the number
@@ -151,6 +168,12 @@ class FeedViewModel @Inject constructor(
                         echoCount = (ember.echoCount + delta).coerceAtLeast(0)
                     )
                 }
+            }
+            // Bump kindlingCount optimistically until snapshot catches up.
+            if (kindledOptimistic && withEcho.kindlingCount == 0) {
+                withEcho.copy(kindlingCount = 1)
+            } else {
+                withEcho
             }
         }
         if (merged.isEmpty()) FeedUiState.Empty
@@ -220,6 +243,23 @@ class FeedViewModel @Inject constructor(
     fun coldMark(emberId: String, reason: String) {
         viewModelScope.launch {
             emberRepository.coldMark(emberId, reason)
+        }
+    }
+
+    /**
+     * Send anonymous warmth to an ember. Write-once — if the user already kindled this
+     * ember the repository no-ops silently. On PERMISSION_DENIED (rules not yet deployed)
+     * the optimistic bump is reverted so the count snaps back rather than lying.
+     */
+    fun kindle(emberId: String) {
+        // Only optimistically bump if the count is currently 0 for this user
+        // (we have no "kindledByMe" local state — the bump is best-effort display only).
+        pendingKindlingIds.update { it + emberId }
+        viewModelScope.launch {
+            emberRepository.kindle(emberId).onFailure {
+                // Revert: remove optimistic intent.
+                pendingKindlingIds.update { ids -> ids - emberId }
+            }
         }
     }
 

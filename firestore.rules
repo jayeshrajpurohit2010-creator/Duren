@@ -95,6 +95,16 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // Kindling — anonymous warmth. One doc per user, write-once.
+      // READ IS DENIED for everyone — not even the author can enumerate who kindled.
+      // The count is only surfaced via ember.kindlingCount on the parent document.
+      match /kindling/{userId} {
+        allow read: if false;
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update: if false;
+        allow delete: if false;
+      }
+
       // Whispers — comments. Anyone authed can read + add; only the author edits/removes.
       match /whispers/{whisperId} {
         allow read: if isAuthed();

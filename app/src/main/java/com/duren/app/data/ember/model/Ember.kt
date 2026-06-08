@@ -59,6 +59,7 @@ data class Ember(
     val echoCount: Int = 0,
     val coldMarkCount: Int = 0,
     val whisperCount: Int = 0,
+    val kindlingCount: Int = 0,
     val extended: Boolean = false,
     val echoedByMe: Boolean = false
 )

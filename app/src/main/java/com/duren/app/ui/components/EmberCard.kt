@@ -85,7 +85,9 @@ fun EmberCard(
     contentPadding: androidx.compose.ui.unit.Dp = DurenSpacing.space4,
     interactive: Boolean = true,
     canDelete: Boolean = false,
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    // Anonymous warmth — no-op by default so callers that haven't wired it yet compile.
+    onKindle: () -> Unit = {}
 ) {
     var showColdMarkDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -350,6 +352,34 @@ fun EmberCard(
                             fontSize = 12.sp,
                             color = DurenColors.TextMuted
                         )
+                    }
+
+                    Spacer(modifier = Modifier.width(DurenSpacing.space4))
+
+                    // Kindling — anonymous warmth. Tap once; no un-kindle. The count
+                    // shows only when > 0 so it stays invisible on cold embers.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = if (interactive) {
+                            Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { onKindle() }
+                        } else Modifier
+                    ) {
+                        Text(
+                            text = "🔥",
+                            fontSize = 13.sp,
+                            modifier = Modifier.alpha(if (ember.kindlingCount > 0) 1f else 0.35f)
+                        )
+                        if (ember.kindlingCount > 0) {
+                            Spacer(modifier = Modifier.width(DurenSpacing.space1))
+                            Text(
+                                text = "${ember.kindlingCount}",
+                                fontSize = 12.sp,
+                                color = DurenColors.TextMuted
+                            )
+                        }
                     }
                 }
 

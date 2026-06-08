@@ -160,6 +160,7 @@ class EmberRepository @Inject constructor(
                     "echoCount" to 0,
                     "coldMarkCount" to 0,
                     "whisperCount" to 0,
+                    "kindlingCount" to 0,
                     "extended" to false
                 )
             ).await()
@@ -244,6 +245,35 @@ class EmberRepository @Inject constructor(
                 if (txn.get(markRef).exists()) return@runTransaction
                 txn.set(markRef, mapOf("uid" to uid, "reason" to reason, "createdAt" to Timestamp.now()))
                 txn.update(emberRef, "coldMarkCount", FieldValue.increment(1))
+            }.await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /**
+     * Kindle an ember — an anonymous warmth signal. One per user per ember; idempotent.
+     *
+     * The author can never learn who kindled: the sub-collection is READ-DENIED for all
+     * (enforced in Firestore rules). Only [kindlingCount] on the ember document is public.
+     *
+     * If the kindling doc already exists the transaction is a no-op (the count is NOT
+     * decremented — kindling cannot be un-done, keeping it simple and anonymous-safe).
+     *
+     * If Firestore rejects the write with PERMISSION_DENIED (rules not yet deployed)
+     * the error is swallowed and [Result.failure] is returned so the caller can revert
+     * any optimistic UI without crashing.
+     */
+    suspend fun kindle(emberId: String): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        val emberRef = firestore.collection(EMBERS).document(emberId)
+        val kindlingRef = emberRef.collection(KINDLING).document(uid)
+        return try {
+            firestore.runTransaction { txn ->
+                if (txn.get(kindlingRef).exists()) return@runTransaction
+                txn.set(kindlingRef, mapOf("createdAt" to Timestamp.now()))
+                txn.update(emberRef, "kindlingCount", FieldValue.increment(1))
             }.await()
             Result.success(Unit)
         } catch (_: Exception) {
@@ -382,6 +412,7 @@ class EmberRepository @Inject constructor(
             echoCount = (getLong("echoCount") ?: 0L).toInt(),
             coldMarkCount = (getLong("coldMarkCount") ?: 0L).toInt(),
             whisperCount = (getLong("whisperCount") ?: 0L).toInt(),
+            kindlingCount = (getLong("kindlingCount") ?: 0L).toInt(),
             extended = getBoolean("extended") == true
         )
     }
@@ -391,6 +422,7 @@ class EmberRepository @Inject constructor(
         const val ECHOES = "echoes"
         const val COLD_MARKS = "coldMarks"
         const val WHISPERS = "whispers"
+        const val KINDLING = "kindling"
         const val PROFILES = "profiles"
 
         const val LIFESPAN_SECONDS = 48L * 3600          // 48h default
