@@ -157,6 +157,8 @@ class TribeRepository @Inject constructor(
                         name = doc.getString("name") ?: return@mapNotNull null,
                         description = doc.getString("description") ?: "",
                         genre = doc.getString("genre") ?: "",
+                        vibe = doc.getString("vibe") ?: "",
+                        emoji = doc.getString("emoji") ?: "",
                         createdBy = doc.getString("createdBy") ?: "",
                         createdAt = doc.getTimestamp("createdAt"),
                         memberCount = (doc.getLong("memberCount") ?: 0L).toInt()
@@ -176,6 +178,8 @@ class TribeRepository @Inject constructor(
                         name = doc.getString("name") ?: "",
                         description = doc.getString("description") ?: "",
                         genre = doc.getString("genre") ?: "",
+                        vibe = doc.getString("vibe") ?: "",
+                        emoji = doc.getString("emoji") ?: "",
                         createdBy = doc.getString("createdBy") ?: "",
                         createdAt = doc.getTimestamp("createdAt"),
                         memberCount = (doc.getLong("memberCount") ?: 0L).toInt()
@@ -204,8 +208,102 @@ class TribeRepository @Inject constructor(
         awaitClose { reg.remove() }
     }
 
+    /**
+     * One-time bootstrap of the pre-seeded tribe catalog. Idempotent: it only
+     * writes when the `tribes` collection is empty, and uses a deterministic slug
+     * as each doc id, so two devices racing on a cold app can't create duplicates.
+     *
+     * Each seeded tribe satisfies the create rule (createdBy = caller, memberCount
+     * = 1, name present). The seeder isn't auto-joined to anything — these are a
+     * public catalog to discover, not the seeder's tribes.
+     */
+    suspend fun seedDefaultTribes(): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        return try {
+            // Seed only the catalog tribes that are actually missing, so it works even
+            // when unrelated tribes already exist. Deterministic slug ids keep it
+            // idempotent (re-runs and concurrent devices converge on the same docs).
+            val existingIds = firestore.collection(TRIBES).limit(200).get().await()
+                .documents.map { it.id }.toSet()
+            val missing = DEFAULT_TRIBES.filter { slug(it.name) !in existingIds }
+            if (missing.isEmpty()) return Result.success(Unit)
+
+            firestore.runBatch { batch ->
+                missing.forEach { t ->
+                    val ref = firestore.collection(TRIBES).document(slug(t.name))
+                    batch.set(
+                        ref,
+                        mapOf(
+                            "name" to t.name,
+                            "description" to t.description,
+                            "genre" to t.genre,
+                            "vibe" to t.vibe,
+                            "emoji" to t.emoji,
+                            "createdBy" to uid,
+                            "createdAt" to FieldValue.serverTimestamp(),
+                            "memberCount" to 1
+                        )
+                    )
+                }
+            }.await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    private data class SeedTribe(
+        val name: String,
+        val genre: String,
+        val vibe: String,
+        val emoji: String
+    ) {
+        // A short ambient line — the campfire's character in one breath.
+        val description: String get() = "$emoji A $vibe $genre tribe."
+    }
+
     companion object {
         const val TRIBES = "tribes"
         const val MEMBERSHIPS = "memberships"
+
+        /** Lowercase, hyphenated, alnum-only doc id derived from a tribe name. */
+        private fun slug(name: String): String =
+            name.trim().lowercase()
+                .replace(Regex("[^a-z0-9]+"), "-")
+                .trim('-')
+                .ifBlank { "tribe" }
+
+        private val DEFAULT_TRIBES = listOf(
+            // Anime & Manga
+            SeedTribe("Anime Late Night", "anime", "energetic", "🌙"),
+            SeedTribe("Manga Chapter Drops", "manga", "hype", "📖"),
+            SeedTribe("Shonen Nerds", "anime", "intense", "⚔️"),
+            SeedTribe("Slice of Life Club", "anime", "cozy", "☕"),
+            SeedTribe("Ghibli Hours", "anime", "peaceful", "🌿"),
+            // Gaming
+            SeedTribe("Late Night Ranked", "gaming", "competitive", "🎮"),
+            SeedTribe("Gacha Pulls", "gaming", "chaotic", "🎰"),
+            SeedTribe("Indie Dev Lab", "gaming", "creative", "🛠️"),
+            SeedTribe("Minecraft After Dark", "gaming", "chill", "⛏️"),
+            SeedTribe("Horror Game Crew", "gaming", "spooky", "👻"),
+            // K-Pop & Music
+            SeedTribe("K-Pop Comeback Night", "kpop", "hype", "💜"),
+            SeedTribe("Lo-Fi Study Session", "music", "calm", "🎵"),
+            SeedTribe("Vocaloid Heads", "music", "niche", "🤖"),
+            SeedTribe("Beat Makers Den", "music", "creative", "🎧"),
+            // Study & Tech
+            SeedTribe("Study Grind", "study", "focused", "📚"),
+            SeedTribe("3AM Deadlines", "study", "stressed", "😭"),
+            SeedTribe("Dev Lounge", "tech", "geeky", "💻"),
+            // Life & Chill
+            SeedTribe("Insomnia Club", "life", "raw", "🌙"),
+            SeedTribe("Night Owls", "life", "chill", "🦉"),
+            SeedTribe("Midnight Snack", "food", "cozy", "🍜"),
+            SeedTribe("Vent Space", "mentalhealth", "safe", "💙"),
+            SeedTribe("Confession Booth", "anonymous", "raw", "🕯️"),
+            // Special meta-tribes
+            SeedTribe("The Whisper Forest", "meta", "confessional", "🌲"),
+            SeedTribe("The Clearing", "meta", "open", "🏕️")
+        )
     }
 }

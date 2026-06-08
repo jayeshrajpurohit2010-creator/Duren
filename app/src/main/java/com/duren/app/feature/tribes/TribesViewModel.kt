@@ -23,6 +23,12 @@ class TribesViewModel @Inject constructor(
     private val tribeRepository: TribeRepository
 ) : ViewModel() {
 
+    init {
+        // Bootstrap the pre-seeded tribe catalog the first time anyone opens Discover
+        // on a fresh app. Idempotent — a no-op once any tribe exists.
+        viewModelScope.launch { tribeRepository.seedDefaultTribes() }
+    }
+
     val uiState: StateFlow<TribesUiState> = tribeRepository.observeTribes()
         .map { tribes ->
             if (tribes.isEmpty()) TribesUiState.Empty

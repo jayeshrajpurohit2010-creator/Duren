@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -24,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -126,11 +128,28 @@ private fun TribeCard(
                 .fillMaxWidth()
                 .padding(DurenSpacing.space4)
         ) {
-            Text(
-                text = tribe.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (tribe.emoji.isNotBlank()) {
+                    Text(text = tribe.emoji, style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.width(DurenSpacing.space2))
+                }
+                Text(
+                    text = tribe.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Vibe is the tribe's character — small and italic, ahead of the genre tag.
+            if (tribe.vibe.isNotBlank()) {
+                Spacer(Modifier.height(DurenSpacing.space1))
+                Text(
+                    text = tribe.vibe,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             if (tribe.genre.isNotBlank()) {
                 Spacer(Modifier.height(DurenSpacing.space1))

@@ -13,6 +13,10 @@ data class Tribe(
     val name: String = "",
     val description: String = "",
     val genre: String = "",
+    // A tribe's distinct identity: a one-word mood (e.g. "cozy", "chaotic") and a
+    // single emoji shown on its card and banner, so each campfire feels different.
+    val vibe: String = "",
+    val emoji: String = "",
     val createdBy: String = "",
     val createdAt: Timestamp? = null,
     val memberCount: Int = 0,
