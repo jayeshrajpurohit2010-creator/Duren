@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -33,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,16 +46,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.PostMode
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.components.DurenIcon
+import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -113,9 +119,11 @@ fun ComposeScreen(
     val canPost = !isPosting && (bodyText.isNotBlank() || mediaUri != null)
 
     Scaffold(
+        containerColor = DurenColors.BackgroundPrimary,
         topBar = {
             TopAppBar(
-                title = { Text("Share an ember") }
+                title = { Text("Compose", color = DurenColors.TextPrimary) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->
@@ -143,7 +151,7 @@ fun ComposeScreen(
                 Text(
                     text = "Post to",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = DurenColors.TextMuted
                 )
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -165,29 +173,25 @@ fun ComposeScreen(
                 }
             }
 
-            // Mode selector
+            // Mode selector — three pills. Selected = teal on near-black, never white.
             Column(verticalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
                 Text(
                     text = "Post as",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = DurenColors.TextMuted
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)
                 ) {
                     PostMode.entries.forEach { mode ->
-                        FilterChip(
+                        PostAsPill(
+                            text = when (mode) {
+                                PostMode.Named -> "Named"
+                                PostMode.Anonymous -> "Anonymous"
+                                PostMode.Confess -> "Confess"
+                            },
                             selected = selectedMode == mode,
-                            onClick = { selectedMode = mode },
-                            label = {
-                                Text(
-                                    when (mode) {
-                                        PostMode.Named -> "Named"
-                                        PostMode.Anonymous -> "Anonymous"
-                                        PostMode.Confess -> "Confess"
-                                    }
-                                )
-                            }
+                            onClick = { selectedMode = mode }
                         )
                     }
                 }
@@ -195,7 +199,7 @@ fun ComposeScreen(
                     Text(
                         text = "Posted without your name or avatar.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = DurenColors.TextMuted
                     )
                 }
             }
@@ -211,7 +215,7 @@ fun ComposeScreen(
                     Text(
                         text = "Hidden past 100 characters until someone echoes to reveal the rest.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = DurenColors.TextMuted
                     )
                 }
             }
@@ -258,7 +262,7 @@ fun ComposeScreen(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(DurenSpacing.space2),
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = DurenColors.SurfaceElevated
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
@@ -279,22 +283,13 @@ fun ComposeScreen(
                     text = "FADES IN 48h",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = DurenShapes.pill
-                        )
-                        .padding(
-                            horizontal = DurenSpacing.space4,
-                            vertical = DurenSpacing.space2
-                        )
+                    color = DurenColors.AccentTeal
                 )
                 Text(
                     text = "Catches fire? Reaches 72h",
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = DurenColors.TextMuted,
                     modifier = Modifier.padding(top = DurenSpacing.space2)
                 )
             }
@@ -310,23 +305,49 @@ fun ComposeScreen(
 
             Spacer(Modifier.height(DurenSpacing.space2))
 
-            // Send up button
+            // Release this ember — full-width teal pill, near-black label.
             Button(
                 onClick = {
                     viewModel.post(bodyText, selectedTribe, selectedMode, mediaUri, fragment)
                 },
                 enabled = canPost,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DurenColors.AccentTeal,
+                    contentColor = DurenColors.OnAccent,
+                    disabledContainerColor = DurenColors.SurfaceElevated,
+                    disabledContentColor = DurenColors.TextDisabled
+                ),
+                shape = DurenShapes.pill,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
                 Text(
-                    text = if (isPosting) "Sending…" else "Send up",
-                    fontWeight = FontWeight.Medium
+                    text = if (isPosting) "Releasing…" else "Release this ember 🔥",
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
             Spacer(Modifier.height(DurenSpacing.space6))
         }
+    }
+}
+
+/** A "Post as" choice. Selected fills teal with near-black text; the rest stay dark. */
+@Composable
+private fun PostAsPill(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(DurenShapes.pill)
+            .background(if (selected) DurenColors.AccentTeal else DurenColors.SurfaceElevated)
+            .clickable(onClick = onClick)
+            .padding(horizontal = DurenSpacing.space4, vertical = DurenSpacing.space2)
+    ) {
+        Text(
+            text = text,
+            color = if (selected) DurenColors.OnAccent else DurenColors.TextSecondary,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            fontSize = 14.sp
+        )
     }
 }

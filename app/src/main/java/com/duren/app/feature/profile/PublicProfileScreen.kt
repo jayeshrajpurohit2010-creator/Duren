@@ -1,5 +1,6 @@
 package com.duren.app.feature.profile
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,9 +24,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -85,6 +88,16 @@ fun PublicProfileScreen(
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val embers by viewModel.embers.collectAsStateWithLifecycle()
     val relation by viewModel.relation.collectAsStateWithLifecycle()
+    val nudgeMessage by viewModel.nudgeMessage.collectAsStateWithLifecycle()
+
+    // Surface the nudge result as a brief toast, then clear it.
+    val context = LocalContext.current
+    LaunchedEffect(nudgeMessage) {
+        nudgeMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearNudgeMessage()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -149,6 +162,14 @@ fun PublicProfileScreen(
                         onClick = { onOpenChat(viewModel.userId) },
                         modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) { Text("Message") }
+                }
+                // Nudge — a silent "I see you". Available for anyone but yourself.
+                if (relation != NestRelation.Self) {
+                    Spacer(Modifier.height(DurenSpacing.space2))
+                    OutlinedButton(
+                        onClick = viewModel::nudge,
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) { Text("Nudge 👀") }
                 }
                 Spacer(Modifier.height(DurenSpacing.space6))
                 HorizontalDivider()

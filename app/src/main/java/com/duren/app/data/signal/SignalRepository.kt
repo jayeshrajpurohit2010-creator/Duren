@@ -59,6 +59,32 @@ class SignalRepository @Inject constructor(
         }
     }
 
+    /**
+     * A silent "I see you" — lands as a [SignalType.Nudge] Signal in [toUserId]'s
+     * inbox. Capped at 5/day, counted on the SENDER's own profile doc: profile
+     * updates are already allowed by the rules, so this needs no new collection and
+     * no rules deploy. The count resets on the first nudge of a new calendar day.
+     */
+    suspend fun nudge(toUserId: String): com.duren.app.data.signal.model.NudgeOutcome {
+        val me = auth.currentUser?.uid
+            ?: return com.duren.app.data.signal.model.NudgeOutcome.Failed
+        if (me == toUserId) return com.duren.app.data.signal.model.NudgeOutcome.Failed
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            .format(java.util.Date())
+        return runCatching {
+            val meRef = firestore.collection("profiles").document(me)
+            val snap = meRef.get().await()
+            val used = if (snap.getString("nudgeDate") == today) (snap.getLong("nudgeCount") ?: 0L) else 0L
+            if (used >= 5L) { // 5/day on the free tier
+                com.duren.app.data.signal.model.NudgeOutcome.LimitReached
+            } else {
+                notify(toUserId, SignalType.Nudge)
+                meRef.update(mapOf("nudgeDate" to today, "nudgeCount" to used + 1)).await()
+                com.duren.app.data.signal.model.NudgeOutcome.Sent
+            }
+        }.getOrDefault(com.duren.app.data.signal.model.NudgeOutcome.Failed)
+    }
+
     /** The current user's Signals, newest first (sorted on-device — no index needed). */
     fun observeSignals(): Flow<List<Signal>> {
         val me = auth.currentUser?.uid ?: return flowOf(emptyList())

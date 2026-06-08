@@ -50,11 +50,19 @@ class EmberRepository @Inject constructor(
             .limit(limit)
     )
 
-    /** A single tribe's embers, newest non-expired first. */
+    /**
+     * A single tribe's embers, newest non-expired first.
+     *
+     * Like [observeMine], deliberately NO server-side `orderBy`: pairing
+     * `whereEqualTo("tribeId")` with `orderBy("createdAt")` needs a composite index
+     * that isn't deployed — the query just fails, the swallowed listener error leaves
+     * the tribe feed permanently empty, and posting reads as "nothing happened." The
+     * post was always written fine; this is what couldn't read it back. [feedQuery]
+     * sorts newest-first on-device, so a tribe post shows up the instant it's written.
+     */
     fun observeTribeEmbers(tribeId: String, limit: Long): Flow<List<Ember>> = feedQuery(
         firestore.collection(EMBERS)
             .whereEqualTo("tribeId", tribeId)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(limit)
     )
 
@@ -155,7 +163,13 @@ class EmberRepository @Inject constructor(
                     "mediaUrl" to mediaUrl,
                     "mediaType" to mediaType,
                     "mode" to mode.wire,
-                    "createdAt" to FieldValue.serverTimestamp(),
+                    // Client timestamp, not serverTimestamp: the optimistic local write
+                    // then carries a real createdAt, so the author's own ember sorts to
+                    // the top and appears instantly — instead of waiting a round-trip
+                    // while a null pending value sorts it off the page. Consistent with
+                    // expiresAt above (already client-time). Phase 4 can restore server
+                    // authority once ranking moves into Cloud Functions.
+                    "createdAt" to now,
                     "expiresAt" to expiresAt,
                     "echoCount" to 0,
                     "coldMarkCount" to 0,

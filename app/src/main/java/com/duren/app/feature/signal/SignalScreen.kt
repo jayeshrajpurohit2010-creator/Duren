@@ -68,9 +68,9 @@ fun SignalScreen(
     ) { padding ->
         if (signals.isEmpty()) {
             EmptyState(
-                title = "Quiet for now.",
-                body = "Echoes, whispers, and Nest requests will land here.",
-                emoji = "🔔",
+                title = "All quiet.",
+                body = "Embers are warm.",
+                emoji = "✨",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -152,5 +152,6 @@ private fun verbFor(type: SignalType): String = when (type) {
     SignalType.Echo -> "echoed your ember"
     SignalType.Whisper -> "whispered on your ember"
     SignalType.Dm -> "sent you an ember"
+    SignalType.Nudge -> "nudged you tonight 👀"
     SignalType.Unknown -> "did something"
 }

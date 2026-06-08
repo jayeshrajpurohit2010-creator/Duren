@@ -45,7 +45,9 @@ class LanternRepository @Inject constructor(
                 mapOf(
                     "authorId" to user.uid,
                     "text" to trimmed,
-                    "createdAt" to FieldValue.serverTimestamp(),
+                    // Client timestamp (matches the ember fix + expiresAt above): your
+                    // own lantern then sorts in and shows up instantly, no round-trip.
+                    "createdAt" to now,
                     "expiresAt" to expiresAt,
                     "foundCount" to 0
                 )
@@ -69,10 +71,13 @@ class LanternRepository @Inject constructor(
     /** Yours: the current user's own lanterns, newest first. */
     fun observeMine(limit: Long): Flow<List<Lantern>> {
         val uid = auth.currentUser?.uid
+        // No server orderBy: whereEqualTo("authorId") + orderBy("createdAt") needs an
+        // undeployed composite index (the same trap that hid tribe posts and own embers).
+        // The query would fail silently and your lanterns would never show. lanternQuery
+        // sorts newest-first on-device instead.
         return lanternQuery(
             firestore.collection(LANTERNS)
                 .whereEqualTo("authorId", uid)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(limit)
         ) { true }
     }
@@ -87,6 +92,9 @@ class LanternRepository @Inject constructor(
                 ?.mapNotNull { it.toLantern() }
                 ?.filter { l -> l.expiresAt == null || l.expiresAt > now }
                 ?.filter(extraFilter)
+                // Newest-first on-device so observeMine can skip the composite-index
+                // orderBy. No-op for observeDiscoverable (already server-sorted).
+                ?.sortedByDescending { it.createdAt }
                 ?: emptyList()
             trySend(list)
         }

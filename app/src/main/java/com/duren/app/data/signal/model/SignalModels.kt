@@ -10,6 +10,7 @@ enum class SignalType(val wire: String) {
     Echo("echo"),
     Whisper("whisper"),
     Dm("dm"),
+    Nudge("nudge"),
     Unknown("unknown");
 
     companion object {
@@ -17,6 +18,9 @@ enum class SignalType(val wire: String) {
             entries.firstOrNull { it.wire == value } ?: Unknown
     }
 }
+
+/** The result of trying to nudge someone (SignalRepository.nudge). */
+enum class NudgeOutcome { Sent, LimitReached, Failed }
 
 /**
  * A Signal — Duren's word for a notification (notifications/{me}/items/{id}).

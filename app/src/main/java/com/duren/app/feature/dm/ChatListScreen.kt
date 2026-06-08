@@ -65,9 +65,9 @@ fun ChatListScreen(
     ) { padding ->
         if (chats.isEmpty()) {
             EmptyState(
-                title = "No conversations yet.",
-                body = "Message someone in your Nest. It fades in 48 hours.",
-                emoji = "✉️",
+                title = "Whisper to start a fire.",
+                body = "Message someone in your Nest — it fades in 48 hours.",
+                emoji = "🤫",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
