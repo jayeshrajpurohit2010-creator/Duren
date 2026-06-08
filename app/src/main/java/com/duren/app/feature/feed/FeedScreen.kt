@@ -1,7 +1,13 @@
 package com.duren.app.feature.feed
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -66,6 +72,8 @@ fun FeedScreen(
     onOpenSearch: () -> Unit = {},
     onOpenSignal: () -> Unit = {},
     onOpenMessages: () -> Unit = {},
+    doveMode: Boolean = false,
+    onToggleDoveMode: () -> Unit = {},
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,35 +93,65 @@ fun FeedScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { DurenMasthead(subtitle = "The Clearing") },
-                actions = {
-                    IconButton(onClick = onOpenSignal) {
-                        BadgedBox(
-                            badge = {
-                                if (unreadSignals > 0) {
-                                    Badge { Text(if (unreadSignals > 9) "9+" else "$unreadSignals") }
+            AnimatedVisibility(
+                visible = !doveMode,
+                enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { -it },
+                exit = fadeOut(tween(300)) + slideOutVertically(tween(300)) { -it }
+            ) {
+                TopAppBar(
+                    title = { DurenMasthead(subtitle = "The Clearing") },
+                    actions = {
+                        IconButton(onClick = onOpenSignal) {
+                            BadgedBox(
+                                badge = {
+                                    if (unreadSignals > 0) {
+                                        Badge { Text(if (unreadSignals > 9) "9+" else "$unreadSignals") }
+                                    }
                                 }
+                            ) {
+                                DurenIcon(DurenIcon.Bell, size = 22.dp)
                             }
-                        ) {
-                            DurenIcon(DurenIcon.Bell, size = 22.dp)
+                        }
+                        IconButton(onClick = onOpenMessages) {
+                            // DMs are "Expiring Embers" — the speech-bubble whisper glyph.
+                            DurenIcon(DurenIcon.Whisper, size = 22.dp)
+                        }
+                        IconButton(onClick = onOpenSearch) {
+                            DurenIcon(DurenIcon.Search, size = 22.dp)
+                        }
+                        // Dove Mode toggle — 🕊 glyph. Tap to enter stillness; tap again (or
+                        // tap the feed) to return. Teal tint when active so it reads as "on".
+                        IconButton(onClick = onToggleDoveMode) {
+                            Text(
+                                text = "🕊",
+                                color = if (doveMode) DurenColors.AccentTeal else DurenColors.TextSecondary
+                            )
                         }
                     }
-                    IconButton(onClick = onOpenMessages) {
-                        // DMs are "Expiring Embers" — the speech-bubble whisper glyph.
-                        DurenIcon(DurenIcon.Whisper, size = 22.dp)
-                    }
-                    IconButton(onClick = onOpenSearch) {
-                        DurenIcon(DurenIcon.Search, size = 22.dp)
-                    }
-                }
-            )
+                )
+            }
         }
     ) { innerPadding ->
+        // In Dove Mode the entire feed is wrapped in a tap target so a single tap
+        // anywhere on the content restores chrome — quiet and discoverable.
+        Box(
+            modifier = if (doveMode) {
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onToggleDoveMode() }
+            } else {
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            }
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 // Horizontal swipe moves between the four sub-tabs — no tab bar.
                 .pointerInput(tab) {
                     var dx = 0f
@@ -133,9 +171,23 @@ fun FeedScreen(
                     )
                 }
         ) {
-            NightBanner(phase = nightPhase)
+            // Sub-tab dots and the Night banner are also part of the chrome —
+            // they fade away in Dove Mode so only raw embers remain.
+            AnimatedVisibility(
+                visible = !doveMode,
+                enter = fadeIn(tween(250)),
+                exit = fadeOut(tween(250))
+            ) {
+                NightBanner(phase = nightPhase)
+            }
 
-            SubTabDots(selected = tab, onSelect = viewModel::selectTab)
+            AnimatedVisibility(
+                visible = !doveMode,
+                enter = fadeIn(tween(250)),
+                exit = fadeOut(tween(250))
+            ) {
+                SubTabDots(selected = tab, onSelect = viewModel::selectTab)
+            }
 
             when (val state = uiState) {
                 is FeedUiState.Loading -> {
@@ -216,7 +268,8 @@ fun FeedScreen(
                     }
                 }
             }
-        }
+        } // end Column
+        } // end Box (dove mode tap target)
     }
 }
 

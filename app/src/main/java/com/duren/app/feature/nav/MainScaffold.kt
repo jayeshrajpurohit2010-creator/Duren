@@ -1,5 +1,11 @@
 package com.duren.app.feature.nav
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -7,6 +13,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.duren.app.ui.components.DurenIcon
@@ -42,6 +51,10 @@ private data class TabSpec<T : Any>(
 fun MainScaffold(onSignedOut: () -> Unit) {
     val tabsNav = rememberNavController()
 
+    // Dove Mode: strip all chrome so only embers float on darkness.
+    // Persists across config changes via rememberSaveable.
+    var doveMode by rememberSaveable { mutableStateOf(false) }
+
     val tabs = listOf(
         // Duren's own hand-drawn glyphs (design export `Icon.*`), not Material.
         TabSpec(StateTab, "Clearing", DurenIcon.Ember),
@@ -66,11 +79,16 @@ fun MainScaffold(onSignedOut: () -> Unit) {
             it.hasRoute(CreateTribeRoute::class) ||
             it.hasRoute(TribeDetailRoute::class)
     } == true
-    val showBottomBar = !onFullScreen
+    // Bottom bar hides on full-screen routes OR when Dove Mode is active.
+    val showBottomBar = !onFullScreen && !doveMode
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it },
+                exit = fadeOut(tween(300)) + slideOutVertically(tween(300)) { it }
+            ) {
                 NavigationBar {
                     tabs.forEach { tab ->
                         val selected = destination?.hierarchy?.any { it.hasRoute(tab.route::class) } == true
@@ -94,13 +112,17 @@ fun MainScaffold(onSignedOut: () -> Unit) {
         NavHost(
             navController = tabsNav,
             startDestination = StateTab,
+            // In Dove Mode the bottom bar is gone, so we still respect the scaffold
+            // padding (which collapses to zero) to avoid layout jumps.
             modifier = Modifier.padding(padding)
         ) {
             composable<StateTab> {
                 FeedScreen(
                     onOpenSearch = { tabsNav.navigate(SearchRoute) },
                     onOpenSignal = { tabsNav.navigate(SignalRoute) },
-                    onOpenMessages = { tabsNav.navigate(ChatListRoute) }
+                    onOpenMessages = { tabsNav.navigate(ChatListRoute) },
+                    doveMode = doveMode,
+                    onToggleDoveMode = { doveMode = !doveMode }
                 )
             }
             composable<TribesTab> {
