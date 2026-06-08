@@ -48,9 +48,15 @@ class NestFeedViewModel @Inject constructor(
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    /** Embers authored by Nest members, newest first, with my echo state hydrated. */
+    /** Embers authored by Nest members (and you), newest first, with my echo state hydrated. */
     val feed: StateFlow<List<Ember>> = memberIds
-        .flatMapLatest { ids -> emberRepository.observeFromAuthors(ids, FEED_LIMIT) }
+        .flatMapLatest { ids ->
+            // Include your own embers alongside your Nest's. Without this the Nest is
+            // asymmetric — your people see what you post, but you don't — which read as
+            // a bug. Self is always within the 30-author whereIn cap (it's listed first).
+            val authors = (listOfNotNull(currentUserId) + ids).distinct()
+            emberRepository.observeFromAuthors(authors, FEED_LIMIT)
+        }
         .map { embers ->
             coroutineScope {
                 embers.map { ember ->
