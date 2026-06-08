@@ -68,9 +68,9 @@ fun SignalScreen(
     ) { padding ->
         if (signals.isEmpty()) {
             EmptyState(
-                title = "Quiet for now.",
-                body = "Echoes, whispers, and Nest requests will land here.",
-                emoji = "🔔",
+                title = "All quiet.",
+                body = "Embers are warm.",
+                emoji = "✨",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
