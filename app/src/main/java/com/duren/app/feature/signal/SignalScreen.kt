@@ -152,5 +152,6 @@ private fun verbFor(type: SignalType): String = when (type) {
     SignalType.Echo -> "echoed your ember"
     SignalType.Whisper -> "whispered on your ember"
     SignalType.Dm -> "sent you an ember"
+    SignalType.Nudge -> "nudged you tonight 👀"
     SignalType.Unknown -> "did something"
 }

@@ -10,10 +10,14 @@ import com.duren.app.data.nest.NestRepository
 import com.duren.app.data.nest.model.NestRelation
 import com.duren.app.data.profile.ProfileRepository
 import com.duren.app.data.profile.model.Profile
+import com.duren.app.data.signal.SignalRepository
+import com.duren.app.data.signal.model.NudgeOutcome
 import com.duren.app.feature.nav.PublicProfileRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,7 +28,8 @@ class PublicProfileViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     profileRepository: ProfileRepository,
     emberRepository: EmberRepository,
-    private val nestRepository: NestRepository
+    private val nestRepository: NestRepository,
+    private val signalRepository: SignalRepository
 ) : ViewModel() {
 
     val userId: String = savedStateHandle.toRoute<PublicProfileRoute>().userId
@@ -38,8 +43,24 @@ class PublicProfileViewModel @Inject constructor(
     val relation: StateFlow<NestRelation> = nestRepository.observeRelation(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NestRelation.None)
 
+    // One-shot toast text after a nudge; the screen shows it then clears it.
+    private val _nudgeMessage = MutableStateFlow<String?>(null)
+    val nudgeMessage: StateFlow<String?> = _nudgeMessage.asStateFlow()
+
     fun addToNest() = viewModelScope.launch { nestRepository.sendRequest(userId) }
     fun cancelRequest() = viewModelScope.launch { nestRepository.cancelRequest(userId) }
     fun acceptRequest() = viewModelScope.launch { nestRepository.acceptRequest(userId) }
     fun declineRequest() = viewModelScope.launch { nestRepository.declineRequest(userId) }
+
+    /** Send a silent nudge. Surfaces a one-line result the screen toasts. */
+    fun nudge() = viewModelScope.launch {
+        val name = profile.value?.username?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: "them"
+        _nudgeMessage.value = when (signalRepository.nudge(userId)) {
+            NudgeOutcome.Sent -> "You nudged $name 👀"
+            NudgeOutcome.LimitReached -> "You're out of nudges for tonight."
+            NudgeOutcome.Failed -> "Couldn't nudge right now."
+        }
+    }
+
+    fun clearNudgeMessage() { _nudgeMessage.value = null }
 }
