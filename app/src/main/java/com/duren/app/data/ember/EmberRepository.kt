@@ -109,7 +109,9 @@ class EmberRepository @Inject constructor(
         tribeId: String?,
         tribeName: String,
         mode: PostMode,
-        mediaUri: Uri?
+        mediaUri: Uri?,
+        isFragment: Boolean = false,
+        fragmentThreshold: Int = 100
     ): Result<String> {
         val user = auth.currentUser ?: return Result.failure(DomainError.NotAuthenticated)
         val trimmed = text.trim()
@@ -131,6 +133,10 @@ class EmberRepository @Inject constructor(
 
             val now = Timestamp.now()
             val expiresAt = Timestamp(now.seconds + LIFESPAN_SECONDS, 0)
+            // Confess mode wears a poetic mask; only worth setting a fragment when the
+            // body actually runs past the reveal threshold.
+            val poeticAlias = if (mode == PostMode.Confess) PoeticAlias.random() else ""
+            val fragment = isFragment && trimmed.length > fragmentThreshold
             val emberRef = firestore.collection(EMBERS).document()
             emberRef.set(
                 mapOf(
@@ -140,6 +146,9 @@ class EmberRepository @Inject constructor(
                     "authorAvatarUrl" to if (masked) "" else (profileSnap.getString("avatarUrl") ?: ""),
                     "authorAvatarColor" to if (masked) "#FF6B35" else (profileSnap.getString("avatarColor") ?: "#FF6B35"),
                     "emberSignature" to if (masked) "" else (profileSnap.getString("signature") ?: ""),
+                    "poeticAlias" to poeticAlias,
+                    "isFragment" to fragment,
+                    "fragmentThreshold" to fragmentThreshold,
                     "tribeId" to tribeId,
                     "tribeName" to tribeName.trim(),
                     "text" to trimmed,
@@ -365,6 +374,9 @@ class EmberRepository @Inject constructor(
             mediaUrl = getString("mediaUrl"),
             mediaType = getString("mediaType"),
             mode = PostMode.fromWire(getString("mode")),
+            poeticAlias = getString("poeticAlias") ?: "",
+            isFragment = getBoolean("isFragment") == true,
+            fragmentThreshold = (getLong("fragmentThreshold") ?: 0L).toInt(),
             createdAt = getTimestamp("createdAt"),
             expiresAt = getTimestamp("expiresAt"),
             echoCount = (getLong("echoCount") ?: 0L).toInt(),

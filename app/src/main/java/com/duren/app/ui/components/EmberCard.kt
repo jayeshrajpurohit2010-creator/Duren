@@ -187,7 +187,7 @@ fun EmberCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 val name = when {
-                    ember.mode == PostMode.Confess -> "A confession"
+                    ember.mode == PostMode.Confess -> ember.poeticAlias.ifBlank { "A confession" }
                     ember.mode.isMasked -> "A soul"
                     else -> ember.authorName
                 }
@@ -219,15 +219,32 @@ fun EmberCard(
 
         // Body — text floats on darkness; photos bleed to the edges.
         if (ember.text.isNotBlank()) {
-            Text(
-                text = ember.text,
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
-                color = DurenColors.TextPrimary,
+            // Fragment mode: hold back everything past the threshold until echoed.
+            val fragmentHeld = ember.isFragment &&
+                !ember.echoedByMe &&
+                ember.text.length > ember.fragmentThreshold
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = contentPadding, vertical = DurenSpacing.space3)
-            )
+            ) {
+                Text(
+                    text = if (fragmentHeld) ember.text.take(ember.fragmentThreshold).trimEnd() + "…"
+                    else ember.text,
+                    fontSize = 16.sp,
+                    lineHeight = 24.sp,
+                    color = DurenColors.TextPrimary
+                )
+                if (fragmentHeld) {
+                    Spacer(modifier = Modifier.height(DurenSpacing.space2))
+                    Text(
+                        text = "🔒 Echo to read the rest",
+                        fontSize = 13.sp,
+                        fontStyle = FontStyle.Italic,
+                        color = DurenColors.AccentTeal
+                    )
+                }
+            }
         }
 
         ember.mediaUrl?.let { media ->

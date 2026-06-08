@@ -69,6 +69,8 @@ fun ComposeScreen(
     var bodyText by rememberSaveable { mutableStateOf("") }
     var selectedTribe by remember { mutableStateOf<Tribe?>(null) }
     var selectedMode by remember { mutableStateOf(PostMode.Named) }
+    // Fragment mode: hide the body past ~100 chars until a reader echoes.
+    var fragment by rememberSaveable { mutableStateOf(false) }
     // Uri is Parcelable, so rememberSaveable keeps the captured photo across rotation.
     var mediaUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
@@ -101,6 +103,7 @@ fun ComposeScreen(
             mediaUri = null
             selectedTribe = null
             selectedMode = PostMode.Named
+            fragment = false
             cameraOpen = true // next ember starts at the camera again
             onPosted()
         }
@@ -191,6 +194,22 @@ fun ComposeScreen(
                 if (selectedMode.isMasked) {
                     Text(
                         text = "Posted without your name or avatar.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Fragment toggle — only meaningful once the body runs long.
+            Column(verticalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
+                FilterChip(
+                    selected = fragment,
+                    onClick = { fragment = !fragment },
+                    label = { Text("Fragment") }
+                )
+                if (fragment) {
+                    Text(
+                        text = "Hidden past 100 characters until someone echoes to reveal the rest.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -294,7 +313,7 @@ fun ComposeScreen(
             // Send up button
             Button(
                 onClick = {
-                    viewModel.post(bodyText, selectedTribe, selectedMode, mediaUri)
+                    viewModel.post(bodyText, selectedTribe, selectedMode, mediaUri, fragment)
                 },
                 enabled = canPost,
                 modifier = Modifier

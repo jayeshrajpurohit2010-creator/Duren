@@ -47,6 +47,13 @@ data class Ember(
     val mediaUrl: String? = null,
     val mediaType: String? = null,
     val mode: PostMode = PostMode.Named,
+    // For Confess mode: the poetic mask shown instead of a name (Feature 15).
+    val poeticAlias: String = "",
+    // Fragment mode (Feature 17): the body past [fragmentThreshold] chars stays
+    // hidden+blurred until the reader echoes. The full text lives in [text]; the
+    // reveal is gated client-side by [Ember.echoedByMe].
+    val isFragment: Boolean = false,
+    val fragmentThreshold: Int = 0,
     val createdAt: Timestamp? = null,
     val expiresAt: Timestamp? = null,
     val echoCount: Int = 0,
