@@ -165,11 +165,10 @@ fun FeedScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            horizontal = DurenSpacing.space4,
-                            vertical = DurenSpacing.space4
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(DurenSpacing.space3)
+                        // No horizontal padding: photos bleed edge-to-edge. Embers are
+                        // separated by space alone — no dividers, no card boxes.
+                        contentPadding = PaddingValues(vertical = DurenSpacing.space6),
+                        verticalArrangement = Arrangement.spacedBy(DurenSpacing.space8)
                     ) {
                         items(
                             items = state.embers,
