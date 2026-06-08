@@ -35,15 +35,15 @@ The rest is in "what's next" below.
 
 ## What it's built with
 
-Kotlin + Jetpack Compose (Material 3), Hilt for dependency injection, and Firebase (Auth + Firestore) for the backend. Runs on Android 7.0 and up.
+Kotlin and Jetpack Compose (Material 3), Hilt doing the dependency-injection wiring, and Firebase (Auth + Firestore) holding it all up. Runs on anything Android 7.0 and up.
 
-One honest constraint: I'm not on Firebase's paid plan yet, so there are no Cloud Functions, no push notifications, and no image hosting. I worked around all three:
+The honest catch: I'm not paying for Firebase yet, so I don't get Cloud Functions, push notifications, or anywhere to host images. I found my way around all three:
 
 - Ranking, the "temperature" of a post, and the burn-down are all computed on the phone.
 - Photos get shrunk down and stored as Base64 right on the post itself — no image server.
 - The Firestore queries are written so they don't need any composite indexes, so there's nothing to set up in the console.
 
-The trade-off is that the features that genuinely *need* a server — push notifications, encrypted DMs, the proper ranking algorithm — are waiting on me upgrading the plan. They're on the list.
+The flip side: anything that genuinely needs a server — push notifications, encrypted DMs, the real ranking algorithm — is parked until I can upgrade. It's all on the list below.
 
 ## Running it yourself
 
