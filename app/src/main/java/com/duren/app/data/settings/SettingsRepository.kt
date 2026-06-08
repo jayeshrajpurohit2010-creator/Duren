@@ -51,6 +51,15 @@ class SettingsRepository @Inject constructor(
         "signature" to signature.trim().take(30)
     )
 
+    /**
+     * Set or clear an AIM-style banked (away) status.
+     * Pass note="" and untilMillis=0 to clear.
+     */
+    suspend fun updateBankedStatus(note: String, untilMillis: Long): Result<Unit> = update(
+        "bankedStatus" to note.trim().take(80),
+        "bankedUntil" to untilMillis
+    )
+
     private suspend fun update(vararg fields: Pair<String, Any>): Result<Unit> {
         val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.Unknown)
         return try {

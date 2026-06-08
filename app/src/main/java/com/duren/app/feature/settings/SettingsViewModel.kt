@@ -73,6 +73,11 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.updateAccount(displayName, bio, pronouns, signature)
         }
 
+    /** Set a banked (away) status. Pass untilMillis = 0 to clear it. */
+    fun setBankedStatus(note: String, untilMillis: Long) = viewModelScope.launch {
+        settingsRepository.updateBankedStatus(note, untilMillis)
+    }
+
     /** True once a password-reset email has been dispatched, so the UI can confirm it. */
     private val _passwordResetSent = MutableStateFlow(false)
     val passwordResetSent: StateFlow<Boolean> = _passwordResetSent.asStateFlow()

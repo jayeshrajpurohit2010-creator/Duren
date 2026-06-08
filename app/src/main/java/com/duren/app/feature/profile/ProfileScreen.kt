@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -32,6 +33,7 @@ import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.EmberCard
+import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenSpacing
 
 @Composable
@@ -95,6 +97,26 @@ fun ProfileScreen(
                                 text = p.bio,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        // Banked Status — only shown while the return time hasn't passed yet.
+                        val now = System.currentTimeMillis()
+                        if (p.bankedUntil > now) {
+                            Spacer(Modifier.height(DurenSpacing.space2))
+                            val remainMins = ((p.bankedUntil - now) / 60_000).toInt()
+                            val backLabel = when {
+                                remainMins >= 60 * 20 -> "back tomorrow"
+                                remainMins >= 60 -> "back in ${remainMins / 60}h ${remainMins % 60}m"
+                                else -> "back in ${remainMins}m"
+                            }
+                            val noteText = if (p.bankedStatus.isNotBlank())
+                                "🌙 Banked — ${p.bankedStatus} · $backLabel"
+                            else
+                                "🌙 Banked · $backLabel"
+                            Text(
+                                text = noteText,
+                                style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                                color = DurenColors.TextMuted
                             )
                         }
                         Spacer(Modifier.height(DurenSpacing.space2))

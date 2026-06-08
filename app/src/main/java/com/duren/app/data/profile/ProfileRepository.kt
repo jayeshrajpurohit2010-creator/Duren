@@ -35,7 +35,9 @@ class ProfileRepository @Inject constructor(
                             showLantern = data["showLantern"] as? Boolean ?: true,
                             showMoodCanvas = data["showMoodCanvas"] as? Boolean ?: false,
                             allowAnonBox = data["allowAnonBox"] as? Boolean ?: true,
-                            showTestimonials = data["showTestimonials"] as? Boolean ?: false
+                            showTestimonials = data["showTestimonials"] as? Boolean ?: false,
+                            bankedStatus = data["bankedStatus"] as? String ?: "",
+                            bankedUntil = (data["bankedUntil"] as? Long) ?: 0L
                         )
                     )
                 } else {
@@ -95,7 +97,9 @@ class ProfileRepository @Inject constructor(
             pronouns = getString("pronouns") ?: "",
             signature = getString("signature") ?: "",
             avatarUrl = getString("avatarUrl") ?: "",
-            avatarColor = getString("avatarColor") ?: "#FF6B35"
+            avatarColor = getString("avatarColor") ?: "#FF6B35",
+            bankedStatus = getString("bankedStatus") ?: "",
+            bankedUntil = getLong("bankedUntil") ?: 0L
         )
     }
 

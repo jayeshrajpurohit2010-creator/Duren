@@ -57,6 +57,7 @@ import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenAccent
 import com.duren.app.ui.theme.DurenAvatarColors
+import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenSpacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -115,6 +116,11 @@ fun SettingsScreen(
         var bio by remember(p.uid) { mutableStateOf(p.bio) }
         var pronouns by remember(p.uid) { mutableStateOf(p.pronouns) }
         var signature by remember(p.uid) { mutableStateOf(p.signature) }
+
+        // Banked Status local state — seeded from profile.
+        var bankedNote by remember(p.uid) { mutableStateOf(p.bankedStatus) }
+        val nowMillis = System.currentTimeMillis()
+        val bankedActive = p.bankedUntil > nowMillis
 
         Column(
             modifier = Modifier
@@ -271,6 +277,70 @@ fun SettingsScreen(
 
             SectionDivider()
 
+            // ===== Banked Status =====
+            SectionHeader("Banked Status")
+            Text(
+                text = "Go away for a while. Your Nest sees your note and when you're back.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(DurenSpacing.space3))
+            if (bankedActive) {
+                Text(
+                    text = "🌙 You're banked until ${formatBankedUntil(p.bankedUntil)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = DurenColors.AccentTeal,
+                    modifier = Modifier.padding(bottom = DurenSpacing.space2)
+                )
+            }
+            OutlinedTextField(
+                value = bankedNote,
+                onValueChange = { if (it.length <= 80) bankedNote = it },
+                label = { Text("Away note") },
+                placeholder = { Text("back at 11PM · in a meeting · taking a break") },
+                supportingText = { Text("${bankedNote.length}/80") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(DurenSpacing.space3))
+            Text(
+                text = "Back in…",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(DurenSpacing.space2))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val durations = listOf("1h" to 60L, "3h" to 180L, "6h" to 360L, "Tomorrow" to 1440L)
+                durations.forEach { (label, minutes) ->
+                    OutlinedButton(
+                        onClick = {
+                            val untilMillis = System.currentTimeMillis() + minutes * 60_000L
+                            viewModel.setBankedStatus(bankedNote, untilMillis)
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(label, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+            Spacer(Modifier.height(DurenSpacing.space2))
+            if (bankedActive || p.bankedStatus.isNotEmpty()) {
+                OutlinedButton(
+                    onClick = {
+                        bankedNote = ""
+                        viewModel.setBankedStatus("", 0L)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Clear banked status")
+                }
+            }
+
+            SectionDivider()
+
             // ===== About =====
             SectionHeader("About")
             IdentityRow("Version", appVersion)
@@ -392,6 +462,21 @@ fun SettingsScreen(
                 }
             )
         }
+    }
+}
+
+/**
+ * Returns a human-friendly label for a bankedUntil timestamp — e.g. "3h 20m" or
+ * "tomorrow" (if > 12 h away). Purely presentational; displayed in Settings.
+ */
+private fun formatBankedUntil(untilMillis: Long): String {
+    val remainMs = untilMillis - System.currentTimeMillis()
+    if (remainMs <= 0) return "now"
+    val totalMins = (remainMs / 60_000).toInt()
+    return when {
+        totalMins >= 60 * 20 -> "tomorrow"
+        totalMins >= 60 -> "${totalMins / 60}h ${totalMins % 60}m"
+        else -> "${totalMins}m"
     }
 }
 

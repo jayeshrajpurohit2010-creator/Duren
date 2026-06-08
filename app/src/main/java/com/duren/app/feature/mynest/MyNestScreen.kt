@@ -26,12 +26,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,6 +77,7 @@ fun MyNestScreen(
                         username = p?.username.orEmpty(),
                         avatarUrl = p?.avatarUrl,
                         avatarColor = p?.avatarColor ?: "#FF6B35",
+                        bankedLine = null,
                         onClick = { onOpenProfile(request.fromUserId) }
                     ) {
                         Button(
@@ -104,11 +107,23 @@ fun MyNestScreen(
                 }
             } else {
                 items(members, key = { it.uid }) { member ->
+                    val now = System.currentTimeMillis()
+                    val bankedLine: String? = if (member.bankedUntil > now) {
+                        val remainMins = ((member.bankedUntil - now) / 60_000).toInt()
+                        val backLabel = when {
+                            remainMins >= 60 * 20 -> "back tomorrow"
+                            remainMins >= 60 -> "back in ${remainMins / 60}h"
+                            else -> "back in ${remainMins}m"
+                        }
+                        if (member.bankedStatus.isNotBlank()) "🌙 ${member.bankedStatus} · $backLabel"
+                        else "🌙 Banked · $backLabel"
+                    } else null
                     PersonRow(
                         name = member.displayName.ifBlank { member.username },
                         username = member.username,
                         avatarUrl = member.avatarUrl,
                         avatarColor = member.avatarColor,
+                        bankedLine = bankedLine,
                         onClick = { onOpenProfile(member.uid) }
                     ) {
                         Button(
@@ -143,6 +158,7 @@ private fun PersonRow(
     username: String,
     avatarUrl: String?,
     avatarColor: String,
+    bankedLine: String?,
     onClick: () -> Unit,
     trailing: @Composable () -> Unit
 ) {
@@ -172,6 +188,13 @@ private fun PersonRow(
                     text = "@$username",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (bankedLine != null) {
+                Text(
+                    text = bankedLine,
+                    style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                    color = DurenColors.TextMuted
                 )
             }
         }

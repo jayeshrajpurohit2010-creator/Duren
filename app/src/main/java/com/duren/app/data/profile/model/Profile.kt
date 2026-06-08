@@ -27,5 +27,9 @@ data class Profile(
     val showLantern: Boolean = true,
     val showMoodCanvas: Boolean = false,
     val allowAnonBox: Boolean = true,
-    val showTestimonials: Boolean = false
+    val showTestimonials: Boolean = false,
+    // Banked Status (Feature 11): AIM-style away message + return time.
+    // bankedUntil is millis; 0 means not set. Only shown when bankedUntil > now.
+    val bankedStatus: String = "",
+    val bankedUntil: Long = 0L
 )
