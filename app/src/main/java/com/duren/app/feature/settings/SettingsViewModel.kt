@@ -68,9 +68,10 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.updatePrivacy(showLantern, showMoodCanvas, allowAnonBox, showTestimonials)
     }
 
-    fun saveAccount(displayName: String, bio: String, pronouns: String) = viewModelScope.launch {
-        settingsRepository.updateAccount(displayName, bio, pronouns)
-    }
+    fun saveAccount(displayName: String, bio: String, pronouns: String, signature: String) =
+        viewModelScope.launch {
+            settingsRepository.updateAccount(displayName, bio, pronouns, signature)
+        }
 
     /** True once a password-reset email has been dispatched, so the UI can confirm it. */
     private val _passwordResetSent = MutableStateFlow(false)

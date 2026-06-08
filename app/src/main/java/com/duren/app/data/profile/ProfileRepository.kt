@@ -27,6 +27,7 @@ class ProfileRepository @Inject constructor(
                             email = data["email"] as? String ?: "",
                             bio = data["bio"] as? String ?: "",
                             pronouns = data["pronouns"] as? String ?: "",
+                            signature = data["signature"] as? String ?: "",
                             avatarUrl = data["avatarUrl"] as? String ?: "",
                             accentColor = data["accentColor"] as? String ?: "#2dd4bf",
                             lightModeEnabled = data["lightModeEnabled"] as? Boolean ?: false,
@@ -92,6 +93,7 @@ class ProfileRepository @Inject constructor(
             email = "",
             bio = getString("bio") ?: "",
             pronouns = getString("pronouns") ?: "",
+            signature = getString("signature") ?: "",
             avatarUrl = getString("avatarUrl") ?: "",
             avatarColor = getString("avatarColor") ?: "#FF6B35"
         )

@@ -15,6 +15,8 @@ data class Profile(
     val email: String = "",
     val bio: String = "",
     val pronouns: String = "",
+    // A 30-char italic tagline shown under your name on every ember (Feature 14).
+    val signature: String = "",
     val avatarUrl: String = "",
     val createdAt: Timestamp? = null,
     val lastSeen: Timestamp? = null,

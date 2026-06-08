@@ -42,11 +42,13 @@ class SettingsRepository @Inject constructor(
     suspend fun updateAccount(
         displayName: String,
         bio: String,
-        pronouns: String
+        pronouns: String,
+        signature: String
     ): Result<Unit> = update(
         "displayName" to displayName.trim(),
         "bio" to bio.trim(),
-        "pronouns" to pronouns.trim()
+        "pronouns" to pronouns.trim(),
+        "signature" to signature.trim().take(30)
     )
 
     private suspend fun update(vararg fields: Pair<String, Any>): Result<Unit> {

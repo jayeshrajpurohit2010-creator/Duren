@@ -114,6 +114,7 @@ fun SettingsScreen(
         var displayName by remember(p.uid) { mutableStateOf(p.displayName) }
         var bio by remember(p.uid) { mutableStateOf(p.bio) }
         var pronouns by remember(p.uid) { mutableStateOf(p.pronouns) }
+        var signature by remember(p.uid) { mutableStateOf(p.signature) }
 
         Column(
             modifier = Modifier
@@ -243,9 +244,19 @@ fun SettingsScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(Modifier.height(DurenSpacing.space2))
+            OutlinedTextField(
+                value = signature,
+                onValueChange = { if (it.length <= 30) signature = it },
+                label = { Text("Ember signature") },
+                placeholder = { Text("still up at 3am") },
+                supportingText = { Text("${signature.length}/30 · shown under your name on every ember") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(DurenSpacing.space3))
             Button(
-                onClick = { viewModel.saveAccount(displayName, bio, pronouns) },
+                onClick = { viewModel.saveAccount(displayName, bio, pronouns, signature) },
                 modifier = Modifier.fillMaxWidth().height(52.dp)
             ) {
                 Text("Save account", fontWeight = FontWeight.Medium)

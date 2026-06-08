@@ -39,6 +39,8 @@ data class Ember(
     val authorUsername: String = "",
     val authorAvatarUrl: String = "",
     val authorAvatarColor: String = "#FF6B35",
+    // The author's 30-char tagline, stamped at post time. Blank for masked modes.
+    val emberSignature: String = "",
     val tribeId: String? = null,
     val tribeName: String = "",
     val text: String = "",

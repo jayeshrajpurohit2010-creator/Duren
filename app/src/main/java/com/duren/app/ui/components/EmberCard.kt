@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -196,6 +197,15 @@ fun EmberCard(
                     fontWeight = FontWeight.SemiBold,
                     color = DurenColors.TextPrimary
                 )
+                // Ember signature — the author's tagline, italic and quiet.
+                if (!ember.mode.isMasked && ember.emberSignature.isNotBlank()) {
+                    Text(
+                        text = ember.emberSignature,
+                        fontSize = 11.sp,
+                        fontStyle = FontStyle.Italic,
+                        color = DurenColors.TextSecondary
+                    )
+                }
                 val tribeLine = ember.tribeName.trim().ifBlank { null }
                 Text(
                     text = if (tribeLine != null) "in $tribeLine" else "in the clearing",
