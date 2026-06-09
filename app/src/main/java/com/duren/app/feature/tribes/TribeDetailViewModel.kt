@@ -65,9 +65,13 @@ class TribeDetailViewModel @Inject constructor(
 
     val uiState: StateFlow<TribeDetailUiState> =
         combine(tribeFlow, hydratedEmbers, optimisticEchoToggles) { tribe, embers, toggles ->
-            val merged = embers.map { ember ->
-                if (ember.id in toggles) ember.copy(echoedByMe = !ember.echoedByMe) else ember
-            }
+            val merged = embers
+                .map { ember ->
+                    if (ember.id in toggles) ember.copy(echoedByMe = !ember.echoedByMe) else ember
+                }
+                // Floating Lantern: a live pin floats to the top (stable sort keeps
+                // newest-first within each group). F19.
+                .sortedByDescending { it.pinnedNow() }
             TribeDetailUiState(tribe = tribe, embers = merged, loading = false)
         }.stateIn(
             scope = viewModelScope,
@@ -104,5 +108,23 @@ class TribeDetailViewModel @Inject constructor(
         viewModelScope.launch {
             emberRepository.coldMark(emberId, reason)
         }
+    }
+
+    /** The signed-in uid — the screen compares it to tribe.createdBy to show Keeper tools. */
+    val currentUserId: String? get() = emberRepository.currentUserId
+
+    /** Cast a yes/no vote on a poll ember (F18). */
+    fun votePoll(emberId: String, yes: Boolean) {
+        viewModelScope.launch { emberRepository.votePoll(emberId, yes) }
+    }
+
+    /** Keeper pins/unpins this ember to the top of the tribe for an hour (F19). */
+    fun togglePin(ember: Ember) {
+        viewModelScope.launch { emberRepository.setPinned(ember.id, tribeId, !ember.pinnedNow()) }
+    }
+
+    /** Keeper blesses/un-blesses this ember as wisdom — gold, 30-day life (F23). */
+    fun toggleWisdom(ember: Ember) {
+        viewModelScope.launch { emberRepository.setWisdom(ember.id, tribeId, !ember.isWisdom) }
     }
 }

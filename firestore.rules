@@ -106,6 +106,14 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isAuthed() && resource.data.authorId == request.auth.uid;
       }
+
+      // Poll votes — one write-once doc per user, keyed by uid (Quick Poll, F18).
+      // The yes/no tally lives on the parent ember; this just guards one-vote-each.
+      match /pollVotes/{userId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if false;
+      }
     }
 
     // ===== Nest requests (friend requests) =====

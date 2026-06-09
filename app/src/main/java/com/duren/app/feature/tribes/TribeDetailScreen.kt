@@ -51,6 +51,8 @@ fun TribeDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val tribe = uiState.tribe
+    // The Keeper (tribe creator) gets the pin + wisdom tools on each ember.
+    val isKeeper = tribe != null && tribe.createdBy == viewModel.currentUserId
 
     Scaffold(
         topBar = {
@@ -135,7 +137,11 @@ fun TribeDetailScreen(
                             EmberCard(
                                 ember = ember,
                                 onEcho = { viewModel.echo(ember.id) },
-                                onColdMark = { reason -> viewModel.coldMark(ember.id, reason) }
+                                onColdMark = { reason -> viewModel.coldMark(ember.id, reason) },
+                                onVotePoll = { yes -> viewModel.votePoll(ember.id, yes) },
+                                canModerate = isKeeper,
+                                onTogglePin = { viewModel.togglePin(ember) },
+                                onToggleWisdom = { viewModel.toggleWisdom(ember) }
                             )
                         }
                     }

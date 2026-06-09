@@ -36,7 +36,14 @@ class ComposeViewModel @Inject constructor(
     private val _state: MutableStateFlow<PostState> = MutableStateFlow(PostState.Idle)
     val state: StateFlow<PostState> = _state.asStateFlow()
 
-    fun post(text: String, tribe: Tribe?, mode: PostMode, mediaUri: Uri?, isFragment: Boolean = false) {
+    fun post(
+        text: String,
+        tribe: Tribe?,
+        mode: PostMode,
+        mediaUri: Uri?,
+        isFragment: Boolean = false,
+        isPoll: Boolean = false
+    ) {
         viewModelScope.launch {
             _state.value = PostState.Posting
             val result = emberRepository.createEmber(
@@ -45,7 +52,8 @@ class ComposeViewModel @Inject constructor(
                 tribeName = tribe?.name ?: "",
                 mode = mode,
                 mediaUri = mediaUri,
-                isFragment = isFragment
+                isFragment = isFragment,
+                isPoll = isPoll
             )
             _state.value = result.fold(
                 onSuccess = { PostState.Posted },
