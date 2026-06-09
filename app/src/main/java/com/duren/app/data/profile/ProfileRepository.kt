@@ -1,6 +1,8 @@
 package com.duren.app.data.profile
 
 import com.duren.app.data.profile.model.Profile
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
@@ -12,6 +14,7 @@ import javax.inject.Singleton
 
 @Singleton
 class ProfileRepository @Inject constructor(
+    private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore
 ) {
     fun observeProfile(uid: String): Flow<Profile?> = callbackFlow {
@@ -35,7 +38,9 @@ class ProfileRepository @Inject constructor(
                             showLantern = data["showLantern"] as? Boolean ?: true,
                             showMoodCanvas = data["showMoodCanvas"] as? Boolean ?: false,
                             allowAnonBox = data["allowAnonBox"] as? Boolean ?: true,
-                            showTestimonials = data["showTestimonials"] as? Boolean ?: false
+                            showTestimonials = data["showTestimonials"] as? Boolean ?: false,
+                            bankedStatus = data["bankedStatus"] as? String ?: "",
+                            bankedUntil = data["bankedUntil"] as? Timestamp
                         )
                     )
                 } else {
@@ -95,8 +100,33 @@ class ProfileRepository @Inject constructor(
             pronouns = getString("pronouns") ?: "",
             signature = getString("signature") ?: "",
             avatarUrl = getString("avatarUrl") ?: "",
-            avatarColor = getString("avatarColor") ?: "#FF6B35"
+            avatarColor = getString("avatarColor") ?: "#FF6B35",
+            bankedStatus = getString("bankedStatus") ?: "",
+            bankedUntil = getTimestamp("bankedUntil")
         )
+    }
+
+    /**
+     * Banked Status (F11) — leave an AIM-style away note that auto-expires after
+     * [hours] so it can't haunt your profile for days. Touches only the banked
+     * fields, so the profile-update rule (username must stay put) is satisfied.
+     */
+    suspend fun setBanked(note: String, hours: Int = 12): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("not signed in"))
+        val until = Timestamp(Timestamp.now().seconds + hours * 3600L, 0)
+        return runCatching {
+            firestore.collection(PROFILES).document(uid)
+                .update(mapOf("bankedStatus" to note.take(150), "bankedUntil" to until)).await()
+        }
+    }
+
+    /** Clear the away note — you're back at the fire. */
+    suspend fun clearBanked(): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("not signed in"))
+        return runCatching {
+            firestore.collection(PROFILES).document(uid)
+                .update(mapOf("bankedStatus" to "", "bankedUntil" to null)).await()
+        }
     }
 
     companion object {

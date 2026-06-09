@@ -1,6 +1,8 @@
 package com.duren.app.feature.profile
 
 import android.widget.Toast
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,15 +29,22 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duren.app.data.mood.model.Mood
 import com.duren.app.data.nest.model.NestRelation
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -89,6 +99,7 @@ fun PublicProfileScreen(
     val embers by viewModel.embers.collectAsStateWithLifecycle()
     val relation by viewModel.relation.collectAsStateWithLifecycle()
     val nudgeMessage by viewModel.nudgeMessage.collectAsStateWithLifecycle()
+    val theirMood by viewModel.theirMood.collectAsStateWithLifecycle()
 
     // Surface the nudge result as a brief toast, then clear it.
     val context = LocalContext.current
@@ -121,12 +132,27 @@ fun PublicProfileScreen(
         ) {
             item {
                 Spacer(Modifier.height(DurenSpacing.space4))
-                DurenAvatar(
-                    avatarUrl = p?.avatarUrl,
-                    fallbackColorHex = p?.avatarColor ?: "#FF6B35",
-                    size = 88.dp,
-                    contentDescription = "Avatar"
-                )
+                // Aura ring — tinted by their mood tonight if they share it (F12).
+                val auraColor = remember(theirMood, p?.showMoodCanvas) {
+                    val m = theirMood
+                    if (p?.showMoodCanvas == true && m != null && m.isSet)
+                        Color(android.graphics.Color.parseColor(Mood.hexFor(m.mood)))
+                    else DurenColors.AccentTeal
+                }
+                Box(
+                    modifier = Modifier
+                        .size(104.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, auraColor.copy(alpha = 0.5f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    DurenAvatar(
+                        avatarUrl = p?.avatarUrl,
+                        fallbackColorHex = p?.avatarColor ?: "#FF6B35",
+                        size = 88.dp,
+                        contentDescription = "Avatar"
+                    )
+                }
                 Spacer(Modifier.height(DurenSpacing.space3))
                 Text(
                     text = p?.displayName?.ifBlank { p.username } ?: "…",
@@ -144,6 +170,16 @@ fun PublicProfileScreen(
                         Text(
                             text = p.bio,
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    // Banked away-note, if they've stepped out (F11).
+                    if (p.isBanked) {
+                        Spacer(Modifier.height(DurenSpacing.space2))
+                        Text(
+                            text = "💤 ${p.bankedStatus}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontStyle = FontStyle.Italic,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

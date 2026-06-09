@@ -209,6 +209,14 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
+    // ===== Mood Canvas (daily mood, F12) =====
+    // Anyone authed can read it (your aura shows to others when you opt in);
+    // only you write your own days.
+    match /moodCanvas/{userId}/days/{day} {
+      allow read: if isAuthed();
+      allow write: if isOwner(userId);
+    }
+
     // ===== Deny by default for every other collection =====
     // Phase 2+ collections (ghostRooms/etc.) will add their own match blocks.
     // Until then, all access is denied.

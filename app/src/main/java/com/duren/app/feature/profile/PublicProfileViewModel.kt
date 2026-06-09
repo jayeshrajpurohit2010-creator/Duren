@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.Ember
+import com.duren.app.data.mood.MoodRepository
+import com.duren.app.data.mood.model.Mood
 import com.duren.app.data.nest.NestRepository
 import com.duren.app.data.nest.model.NestRelation
 import com.duren.app.data.profile.ProfileRepository
@@ -28,6 +30,7 @@ class PublicProfileViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     profileRepository: ProfileRepository,
     emberRepository: EmberRepository,
+    moodRepository: MoodRepository,
     private val nestRepository: NestRepository,
     private val signalRepository: SignalRepository
 ) : ViewModel() {
@@ -35,6 +38,10 @@ class PublicProfileViewModel @Inject constructor(
     val userId: String = savedStateHandle.toRoute<PublicProfileRoute>().userId
 
     val profile: StateFlow<Profile?> = profileRepository.observeProfile(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Their mood tonight, for the avatar aura (shown only if they opted in). */
+    val theirMood: StateFlow<Mood?> = moodRepository.observeToday(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val embers: StateFlow<List<Ember>> = emberRepository.observeByAuthor(userId, 50)

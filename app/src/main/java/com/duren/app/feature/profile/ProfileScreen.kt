@@ -1,8 +1,12 @@
 package com.duren.app.feature.profile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,13 +22,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duren.app.data.mood.model.Mood
+import com.duren.app.data.profile.model.Profile
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
@@ -54,6 +66,7 @@ fun ProfileScreen(
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val myEmbers by viewModel.myEmbers.collectAsStateWithLifecycle()
+    val myMood by viewModel.myMood.collectAsStateWithLifecycle()
 
     Scaffold(containerColor = DurenColors.BackgroundPrimary) { padding ->
         val p = profile
@@ -79,12 +92,19 @@ fun ProfileScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(Modifier.height(DurenSpacing.space8))
-                        // Presence aura — a soft teal ring around the avatar.
+                        // Presence aura — a soft ring around the avatar. Tinted by
+                        // tonight's Mood Canvas when shown, otherwise teal (F12).
+                        val auraColor = remember(myMood, p.showMoodCanvas) {
+                            val m = myMood
+                            if (p.showMoodCanvas && m != null && m.isSet)
+                                Color(android.graphics.Color.parseColor(Mood.hexFor(m.mood)))
+                            else DurenColors.AccentTeal
+                        }
                         Box(
                             modifier = Modifier
                                 .size(108.dp)
                                 .clip(CircleShape)
-                                .border(2.dp, DurenColors.AccentTeal.copy(alpha = 0.45f), CircleShape),
+                                .border(2.dp, auraColor.copy(alpha = 0.55f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             DurenAvatar(
@@ -129,6 +149,16 @@ fun ProfileScreen(
                                 textAlign = TextAlign.Center
                             )
                         }
+
+                        Spacer(Modifier.height(DurenSpacing.space6))
+                        PresenceControls(
+                            profile = p,
+                            mood = myMood,
+                            onSetMood = viewModel::setMood,
+                            onSetBanked = viewModel::setBanked,
+                            onClearBanked = viewModel::clearBanked
+                        )
+
                         Spacer(Modifier.height(DurenSpacing.space8))
                         Button(
                             onClick = onOpenNest,
@@ -210,6 +240,102 @@ fun ProfileScreen(
                         )
                         Spacer(Modifier.height(DurenSpacing.space6))
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tonight's presence: a Mood Canvas picker (F12) and a Banked away-note (F11). Both
+ * are quiet and opt-in, and live only on your own profile.
+ */
+@Composable
+private fun PresenceControls(
+    profile: Profile,
+    mood: Mood?,
+    onSetMood: (Int) -> Unit,
+    onSetBanked: (String) -> Unit,
+    onClearBanked: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Mood Canvas — five dots, tonight's choice ringed.
+        Text(text = "How's tonight?", fontSize = 12.sp, color = DurenColors.TextMuted)
+        Spacer(Modifier.height(DurenSpacing.space2))
+        Row(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space3)) {
+            (1..5).forEach { m ->
+                val selected = mood?.mood == m
+                val swatch = Color(android.graphics.Color.parseColor(Mood.hexFor(m)))
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (selected) Modifier.border(2.dp, DurenColors.TextPrimary, CircleShape)
+                            else Modifier
+                        )
+                        .clickable { onSetMood(m) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(swatch)
+                    )
+                }
+            }
+        }
+        if (mood?.isSet == true) {
+            Spacer(Modifier.height(DurenSpacing.space1))
+            Text(text = Mood.labelFor(mood.mood), fontSize = 11.sp, color = DurenColors.TextSecondary)
+        }
+
+        Spacer(Modifier.height(DurenSpacing.space5))
+
+        // Banked Status — an away note that clears itself.
+        if (profile.isBanked) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "💤 ${profile.bankedStatus}",
+                    fontSize = 13.sp,
+                    color = DurenColors.TextSecondary
+                )
+                TextButton(onClick = onClearBanked) {
+                    Text("I'm back", color = DurenColors.AccentTeal)
+                }
+            }
+        } else {
+            var editing by remember { mutableStateOf(false) }
+            var note by remember { mutableStateOf("") }
+            if (editing) {
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { if (it.length <= 150) note = it },
+                    placeholder = { Text("Banked. Back at 11PM…") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(DurenSpacing.space2))
+                Row(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
+                    TextButton(onClick = { editing = false }) {
+                        Text("Cancel", color = DurenColors.TextMuted)
+                    }
+                    TextButton(onClick = {
+                        if (note.isNotBlank()) {
+                            onSetBanked(note)
+                            editing = false
+                        }
+                    }) {
+                        Text("Set", color = DurenColors.AccentTeal)
+                    }
+                }
+            } else {
+                TextButton(onClick = { editing = true }) {
+                    Text("Set an away note", color = DurenColors.TextMuted)
                 }
             }
         }

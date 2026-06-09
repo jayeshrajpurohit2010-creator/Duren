@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.duren.app.data.auth.AuthRepository
 import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.Ember
+import com.duren.app.data.mood.MoodRepository
+import com.duren.app.data.mood.model.Mood
 import com.duren.app.data.profile.ProfileRepository
 import com.duren.app.data.profile.model.Profile
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +27,8 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val emberRepository: EmberRepository,
-    profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val moodRepository: MoodRepository
 ) : ViewModel() {
 
     val profile: StateFlow<Profile?> = authRepository.currentUser
@@ -33,6 +36,20 @@ class ProfileViewModel @Inject constructor(
             if (user == null) flowOf(null) else profileRepository.observeProfile(user.uid)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Tonight's mood, for the avatar aura (F12). */
+    val myMood: StateFlow<Mood?> = authRepository.currentUser
+        .flatMapLatest { user ->
+            if (user == null) flowOf(null) else moodRepository.observeToday(user.uid)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Set tonight's mood (1–5). */
+    fun setMood(mood: Int) = viewModelScope.launch { moodRepository.setToday(mood) }
+
+    /** Banked Status — leave / clear an away note (F11). */
+    fun setBanked(note: String) = viewModelScope.launch { profileRepository.setBanked(note) }
+    fun clearBanked() = viewModelScope.launch { profileRepository.clearBanked() }
 
     /** Ember ids deleted this session — hidden immediately, restored if the delete fails. */
     private val deletedIds = MutableStateFlow<Set<String>>(emptySet())
