@@ -1,5 +1,12 @@
 package com.duren.app.feature.tribes
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,15 +38,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duren.app.data.tribe.NightQuestions
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.EmberCard
+import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -94,6 +106,13 @@ fun TribeDetailScreen(
                 val embers = uiState.embers
                 val totalItems = embers.size
 
+                // See The Fire (F34): how many embers were lit in the last half hour —
+                // drives the flame's size in the header.
+                val recentActivity = remember(embers) {
+                    val cutoff = System.currentTimeMillis() - 30 * 60 * 1000
+                    embers.count { (it.createdAt?.toDate()?.time ?: 0L) >= cutoff }
+                }
+
                 val shouldLoadMore by remember {
                     derivedStateOf {
                         val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
@@ -116,9 +135,12 @@ fun TribeDetailScreen(
                         item(key = "header") {
                             TribeDetailHeader(
                                 tribe = tribe,
+                                isKeeper = isKeeper,
+                                activity = recentActivity,
                                 onToggleMembership = { viewModel.toggleMembership() }
                             )
                         }
+                        item(key = "qotn") { QuestionOfNightCard() }
                     }
 
                     if (embers.isEmpty()) {
@@ -154,6 +176,8 @@ fun TribeDetailScreen(
 @Composable
 private fun TribeDetailHeader(
     tribe: Tribe,
+    isKeeper: Boolean,
+    activity: Int,
     onToggleMembership: () -> Unit
 ) {
     Surface(
@@ -166,11 +190,29 @@ private fun TribeDetailHeader(
                 .fillMaxWidth()
                 .padding(DurenSpacing.space4)
         ) {
-            Text(
-                text = tribe.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = tribe.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                // See The Fire — the flame grows with the last half hour of embers.
+                SeeTheFire(activity = activity)
+            }
+
+            if (tribe.vibe.isNotBlank()) {
+                Spacer(Modifier.height(DurenSpacing.space1))
+                Text(
+                    text = tribe.vibe,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    color = DurenColors.AccentTeal
+                )
+            }
 
             if (tribe.genre.isNotBlank()) {
                 Spacer(Modifier.height(DurenSpacing.space1))
@@ -188,6 +230,17 @@ private fun TribeDetailHeader(
                         )
                     )
                 }
+            }
+
+            // Tribe Roles (F20) — the Keeper sees their key, a reminder they hold
+            // the pin + wisdom tools on every ember here.
+            if (isKeeper) {
+                Spacer(Modifier.height(DurenSpacing.space2))
+                Text(
+                    text = "🔑 You keep this fire",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = DurenColors.AccentTeal
+                )
             }
 
             if (tribe.description.isNotBlank()) {
@@ -208,7 +261,8 @@ private fun TribeDetailHeader(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${tribe.memberCount} around the fire",
+                    text = "${tribe.memberCount} around the fire" +
+                        if (activity > 0) " · $activity just now" else "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -224,5 +278,61 @@ private fun TribeDetailHeader(
                 }
             }
         }
+    }
+}
+
+/**
+ * See The Fire (F34) — a flame whose size and pulse follow the tribe's recent
+ * activity. Quiet tribe: small, slow. Busy tribe: big, fast. Derived purely from
+ * the embers already on screen, so it costs nothing.
+ */
+@Composable
+private fun SeeTheFire(activity: Int) {
+    val base = when {
+        activity >= 8 -> 1.2f
+        activity >= 3 -> 1.0f
+        else -> 0.85f
+    }
+    val period = if (activity >= 8) 1200 else 2600
+    val infinite = rememberInfiniteTransition(label = "see-the-fire")
+    val scale by infinite.animateFloat(
+        initialValue = base * 0.92f,
+        targetValue = base * 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(period, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "flame"
+    )
+    Text(text = "🔥", fontSize = 26.sp, modifier = Modifier.scale(scale))
+}
+
+/**
+ * Question of the Night (F22) — tonight's shared prompt, the same for everyone, sitting
+ * at the top of the tribe so there's always something to gather around.
+ */
+@Composable
+private fun QuestionOfNightCard() {
+    val prompt = remember { NightQuestions.forToday() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(DurenShapes.large)
+            .background(DurenColors.SurfacePrimary)
+            .padding(DurenSpacing.space4)
+    ) {
+        Text(
+            text = "QUESTION OF THE NIGHT",
+            fontSize = 11.sp,
+            letterSpacing = 1.5.sp,
+            fontWeight = FontWeight.Medium,
+            color = DurenColors.AccentTeal
+        )
+        Spacer(Modifier.height(DurenSpacing.space2))
+        Text(
+            text = prompt,
+            fontSize = 16.sp,
+            color = DurenColors.TextPrimary
+        )
     }
 }
