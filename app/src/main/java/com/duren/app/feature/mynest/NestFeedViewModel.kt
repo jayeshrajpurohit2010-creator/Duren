@@ -73,6 +73,8 @@ class NestFeedViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun echo(emberId: String) = viewModelScope.launch { emberRepository.toggleEcho(emberId) }
+    fun votePoll(emberId: String, yes: Boolean) =
+        viewModelScope.launch { emberRepository.votePoll(emberId, yes) }
     fun coldMark(emberId: String, reason: String) =
         viewModelScope.launch { emberRepository.coldMark(emberId, reason) }
     fun deleteEmber(emberId: String) = viewModelScope.launch { emberRepository.deleteEmber(emberId) }

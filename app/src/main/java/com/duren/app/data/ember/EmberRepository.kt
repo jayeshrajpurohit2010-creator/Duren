@@ -390,16 +390,16 @@ class EmberRepository @Inject constructor(
         if (now.seconds - theirLast.seconds > SPARK_WINDOW_SECONDS) return
 
         // Sorted pair id keeps one doc per pair regardless of who closed the loop.
-        val pairId = listOf(me, author).sorted().joinToString("_")
-        val sparkRef = firestore.collection(MUTUAL_SPARKS).document(pairId)
+        val pair = listOf(me, author).sorted()
+        val sparkRef = firestore.collection(MUTUAL_SPARKS).document(pair.joinToString("_"))
         val existing = sparkRef.get().await().getTimestamp("detectedAt")
         val fresh = existing == null || now.seconds - existing.seconds > SPARK_WINDOW_SECONDS
         if (!fresh) return
 
         sparkRef.set(
             mapOf(
-                "userA" to listOf(me, author).sorted()[0],
-                "userB" to listOf(me, author).sorted()[1],
+                "userA" to pair[0],
+                "userB" to pair[1],
                 "detectedAt" to now
             )
         ).await()

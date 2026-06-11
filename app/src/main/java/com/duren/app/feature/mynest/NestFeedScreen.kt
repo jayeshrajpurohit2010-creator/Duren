@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.profile.model.Profile
+import com.duren.app.data.smoke.model.SmokeSignal
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
@@ -152,6 +153,9 @@ fun NestFeedScreen(
                             ember = ember,
                             onEcho = { viewModel.echo(ember.id) },
                             onColdMark = { reason -> viewModel.coldMark(ember.id, reason) },
+                            // Without this, a Nest poll flips to results locally but the
+                            // vote never lands (caught in review).
+                            onVotePoll = { yes -> viewModel.votePoll(ember.id, yes) },
                             canDelete = ember.authorId == viewModel.currentUserId,
                             onDelete = { viewModel.deleteEmber(ember.id) }
                         )
@@ -239,7 +243,7 @@ private fun EmptyNest(onFindPeople: () -> Unit) {
 /** "💨 Smoke Signal from [Name]" — a broadcast card that sits above the embers (F30). */
 @Composable
 private fun SmokeSignalCard(
-    signal: com.duren.app.data.smoke.model.SmokeSignal,
+    signal: SmokeSignal,
     onOpenProfile: (String) -> Unit
 ) {
     Surface(
