@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -60,6 +61,7 @@ import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.ember.model.PostMode
 import com.duren.app.feature.whisper.WhisperThread
 import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 import kotlinx.coroutines.launch
 
@@ -85,7 +87,13 @@ fun EmberCard(
     contentPadding: androidx.compose.ui.unit.Dp = DurenSpacing.space4,
     interactive: Boolean = true,
     canDelete: Boolean = false,
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    // Quick Poll: cast a yes/no vote (F18). No-op for non-poll embers.
+    onVotePoll: (yes: Boolean) -> Unit = {},
+    // Keeper-only tribe moderation (F19 pin, F23 wisdom). Only the tribe feed sets these.
+    canModerate: Boolean = false,
+    onTogglePin: () -> Unit = {},
+    onToggleWisdom: () -> Unit = {}
 ) {
     var showColdMarkDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -93,6 +101,9 @@ fun EmberCard(
     var showMenu by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     var zoomedMedia by remember { mutableStateOf<String?>(null) }
+    // Local-only so the poll flips to results the moment you vote; the authoritative
+    // tallies still arrive via the realtime listener on the ember doc.
+    var myVote by remember(ember.id) { mutableStateOf<Boolean?>(null) }
 
     val scope = rememberCoroutineScope()
     val heartScale = remember { Animatable(1f) }
@@ -147,6 +158,15 @@ fun EmberCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            // Embers of Wisdom wear a thin gold frame — the one deliberate border in
+            // an otherwise borderless feed (F23).
+            .then(
+                if (ember.isWisdom)
+                    Modifier
+                        .border(1.dp, WisdomGold.copy(alpha = 0.55f), DurenShapes.large)
+                        .padding(vertical = DurenSpacing.space2)
+                else Modifier
+            )
             .alpha(decay.opacity)
             .then(if (decay.blur > 0.dp) Modifier.blur(decay.blur) else Modifier)
             // Tap anywhere on the body to reveal/hide the quiet actions.
@@ -157,6 +177,51 @@ fun EmberCard(
                 )
             }
     ) {
+        // Keeper marks ride at the very top, above the author line.
+        if (ember.pinnedNow() || ember.isWisdom || ember.isFinal || ember.subEmberName.isNotBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = contentPadding, vertical = DurenSpacing.space1),
+                horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space3)
+            ) {
+                if (ember.pinnedNow()) {
+                    Text(
+                        text = "📌 Floating Lantern",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = DurenColors.AccentTeal
+                    )
+                }
+                if (ember.isWisdom) {
+                    Text(
+                        text = "✨ Ember of Wisdom",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = WisdomGold
+                    )
+                }
+                if (ember.isFinal) {
+                    // A goodbye left behind on the way out of a tribe (F35).
+                    Text(
+                        text = "🕯️ Final Ember",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = DurenColors.TextSecondary
+                    )
+                }
+                if (ember.subEmberName.isNotBlank()) {
+                    // The topic thread it lives in (F36).
+                    Text(
+                        text = "#${ember.subEmberName}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = DurenColors.TextMuted
+                    )
+                }
+            }
+        }
+
         // Identity line — small, muted, never shouting.
         Row(
             modifier = Modifier
@@ -247,6 +312,22 @@ fun EmberCard(
             }
         }
 
+        // Quick Poll — the body above is the question; vote once, then the bar moves.
+        if (ember.isPoll) {
+            PollSection(
+                ember = ember,
+                myVote = myVote,
+                interactive = interactive,
+                contentPadding = contentPadding,
+                onVote = { yes ->
+                    if (myVote == null) {
+                        myVote = yes
+                        onVotePoll(yes)
+                    }
+                }
+            )
+        }
+
         ember.mediaUrl?.let { media ->
             Box(
                 modifier = Modifier
@@ -309,7 +390,14 @@ fun EmberCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Row(
+                    if (ember.isFinal) {
+                        // Final Embers cannot be echoed (F35) — the goodbye just rests.
+                        Text(
+                            text = "🕯️ let it rest",
+                            fontSize = 12.sp,
+                            color = DurenColors.TextMuted
+                        )
+                    } else Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = if (interactive) {
                             Modifier.clickable(
@@ -353,7 +441,7 @@ fun EmberCard(
                     }
                 }
 
-                if (canDelete || interactive) {
+                if (canDelete || interactive || canModerate) {
                     Box {
                         IconButton(
                             onClick = { showMenu = true },
@@ -376,6 +464,23 @@ fun EmberCard(
                                     onClick = {
                                         showMenu = false
                                         showDeleteDialog = true
+                                    }
+                                )
+                            }
+                            // Keeper tools — only in a tribe the viewer keeps.
+                            if (canModerate) {
+                                DropdownMenuItem(
+                                    text = { Text(if (ember.pinnedNow()) "Unpin from tribe" else "📌 Pin to tribe") },
+                                    onClick = {
+                                        showMenu = false
+                                        onTogglePin()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(if (ember.isWisdom) "Remove wisdom" else "✨ Mark as wisdom") },
+                                    onClick = {
+                                        showMenu = false
+                                        onToggleWisdom()
                                     }
                                 )
                             }
@@ -429,6 +534,98 @@ private fun BurningBar(
                     )
                 )
         )
+    }
+}
+
+/** Gold for Keeper-blessed embers — the Design System's Drum-Circle gold (#FFD700). */
+private val WisdomGold = Color(0xFFFFD700)
+
+/**
+ * Quick Poll (F18). The ember body is the question; this is the answer. Before you
+ * vote you see two choices; after, the live yes/no split. One vote, no take-backs.
+ */
+@Composable
+private fun PollSection(
+    ember: Ember,
+    myVote: Boolean?,
+    interactive: Boolean,
+    contentPadding: androidx.compose.ui.unit.Dp,
+    onVote: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = contentPadding, vertical = DurenSpacing.space2),
+        verticalArrangement = Arrangement.spacedBy(DurenSpacing.space2)
+    ) {
+        if (myVote == null && interactive) {
+            Row(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space3)) {
+                PollChoiceButton("Yes", { onVote(true) }, Modifier.weight(1f))
+                PollChoiceButton("No", { onVote(false) }, Modifier.weight(1f))
+            }
+        } else {
+            val total = ember.pollYes + ember.pollNo
+            val yesPct = if (total == 0) (if (myVote == true) 100 else 0) else ember.pollYes * 100 / total
+            val noPct = if (total == 0) (if (myVote == false) 100 else 0) else ember.pollNo * 100 / total
+            PollResultRow("Yes", yesPct, mine = myVote == true)
+            PollResultRow("No", noPct, mine = myVote == false)
+            Text(
+                text = if (total == 1) "1 voice" else "$total voices",
+                fontSize = 11.sp,
+                color = DurenColors.TextMuted
+            )
+        }
+    }
+}
+
+/** A tappable poll answer before voting. */
+@Composable
+private fun PollChoiceButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(DurenColors.SurfaceElevated)
+            .clickable(onClick = onClick)
+            .padding(vertical = DurenSpacing.space2),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DurenColors.TextSecondary)
+    }
+}
+
+/** A poll result: label, percentage, and a teal bar — brighter for the side you picked. */
+@Composable
+private fun PollResultRow(label: String, pct: Int, mine: Boolean) {
+    val fill = if (mine) DurenColors.AccentTeal else DurenColors.AccentTeal.copy(alpha = 0.3f)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(DurenShapes.small)
+            .background(DurenColors.SurfaceElevated)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(pct / 100f)
+                .height(28.dp)
+                .clip(DurenShapes.small)
+                .background(fill)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(28.dp)
+                .padding(horizontal = DurenSpacing.space3),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = if (mine) "$label ●" else label,
+                fontSize = 13.sp,
+                fontWeight = if (mine) FontWeight.SemiBold else FontWeight.Normal,
+                color = DurenColors.TextPrimary
+            )
+            Text(text = "$pct%", fontSize = 13.sp, color = DurenColors.TextSecondary)
+        }
     }
 }
 

@@ -7,12 +7,16 @@ import com.duren.app.core.DomainError
 import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.PostMode
 import com.duren.app.data.tribe.TribeRepository
+import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,6 +28,7 @@ sealed interface PostState {
     data object Posted : PostState
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ComposeViewModel @Inject constructor(
     private val emberRepository: EmberRepository,
@@ -33,10 +38,32 @@ class ComposeViewModel @Inject constructor(
     val myTribes: StateFlow<List<Tribe>> = tribeRepository.observeMyTribes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    // Sub-Embers (F36): the screen reports the picked tribe; we surface its topics
+    // so the composer can offer an optional thread to post into.
+    private val selectedTribeId = MutableStateFlow<String?>(null)
+
+    val subEmbers: StateFlow<List<SubEmber>> = selectedTribeId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyList()) else tribeRepository.observeSubEmbers(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun selectTribe(tribeId: String?) {
+        selectedTribeId.value = tribeId
+    }
+
     private val _state: MutableStateFlow<PostState> = MutableStateFlow(PostState.Idle)
     val state: StateFlow<PostState> = _state.asStateFlow()
 
-    fun post(text: String, tribe: Tribe?, mode: PostMode, mediaUri: Uri?, isFragment: Boolean = false) {
+    fun post(
+        text: String,
+        tribe: Tribe?,
+        mode: PostMode,
+        mediaUri: Uri?,
+        isFragment: Boolean = false,
+        isPoll: Boolean = false,
+        subEmber: SubEmber? = null
+    ) {
         viewModelScope.launch {
             _state.value = PostState.Posting
             val result = emberRepository.createEmber(
@@ -45,7 +72,10 @@ class ComposeViewModel @Inject constructor(
                 tribeName = tribe?.name ?: "",
                 mode = mode,
                 mediaUri = mediaUri,
-                isFragment = isFragment
+                isFragment = isFragment,
+                isPoll = isPoll,
+                subEmberId = if (tribe != null) subEmber?.id else null,
+                subEmberName = if (tribe != null) subEmber?.name.orEmpty() else ""
             )
             _state.value = result.fold(
                 onSuccess = { PostState.Posted },

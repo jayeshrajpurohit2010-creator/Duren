@@ -1,6 +1,16 @@
 package com.duren.app.feature.tribes
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,39 +19,62 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duren.app.data.tribe.NightQuestions
+import com.duren.app.data.tribe.model.Bulletin
+import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.EmberCard
+import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
+import com.duren.app.ui.theme.VibePalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +83,23 @@ fun TribeDetailScreen(
     viewModel: TribeDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val subEmbers by viewModel.subEmbers.collectAsStateWithLifecycle()
     val tribe = uiState.tribe
+    // The Keeper (tribe creator) gets the pin + wisdom tools on each ember.
+    val isKeeper = tribe != null && tribe.createdBy == viewModel.currentUserId
+    // Sub-Embers (F36): which topic the feed is filtered to; null = the whole fire.
+    var selectedTopicId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showNewTopicDialog by remember { mutableStateOf(false) }
+
+    if (showNewTopicDialog) {
+        NewTopicDialog(
+            onDismiss = { showNewTopicDialog = false },
+            onCreate = {
+                viewModel.createSubEmber(it)
+                showNewTopicDialog = false
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -89,8 +138,17 @@ fun TribeDetailScreen(
 
             else -> {
                 val listState = rememberLazyListState()
-                val embers = uiState.embers
+                // Sub-Embers (F36): a chosen topic narrows the fire to that thread.
+                val embers = if (selectedTopicId == null) uiState.embers
+                else uiState.embers.filter { it.subEmberId == selectedTopicId }
                 val totalItems = embers.size
+
+                // See The Fire (F34): how many embers were lit in the last half hour —
+                // drives the flame's size in the header.
+                val recentActivity = remember(embers) {
+                    val cutoff = System.currentTimeMillis() - 30 * 60 * 1000
+                    embers.count { (it.createdAt?.toDate()?.time ?: 0L) >= cutoff }
+                }
 
                 val shouldLoadMore by remember {
                     derivedStateOf {
@@ -114,8 +172,41 @@ fun TribeDetailScreen(
                         item(key = "header") {
                             TribeDetailHeader(
                                 tribe = tribe,
+                                isKeeper = isKeeper,
+                                activity = recentActivity,
                                 onToggleMembership = { viewModel.toggleMembership() }
                             )
+                        }
+                        if (uiState.presentCount > 0) {
+                            item(key = "presence") {
+                                PresenceBeacon(count = uiState.presentCount)
+                            }
+                        }
+                        if (uiState.bulletins.isNotEmpty() || isKeeper) {
+                            item(key = "bulletins") {
+                                BulletinBoard(
+                                    bulletins = uiState.bulletins,
+                                    isKeeper = isKeeper,
+                                    onAdd = { title, text, emoji ->
+                                        viewModel.addBulletin(title, text, emoji)
+                                    },
+                                    onDelete = { viewModel.deleteBulletin(it) }
+                                )
+                            }
+                        }
+                        item(key = "qotn") { QuestionOfNightCard() }
+                        // Topic chips (F36) — shown once any topic exists; members can
+                        // always open one.
+                        if (subEmbers.isNotEmpty() || tribe.isMember) {
+                            item(key = "topics") {
+                                TopicRow(
+                                    topics = subEmbers,
+                                    selectedId = selectedTopicId,
+                                    canCreate = tribe.isMember,
+                                    onSelect = { selectedTopicId = it },
+                                    onNewTopic = { showNewTopicDialog = true }
+                                )
+                            }
                         }
                     }
 
@@ -135,7 +226,11 @@ fun TribeDetailScreen(
                             EmberCard(
                                 ember = ember,
                                 onEcho = { viewModel.echo(ember.id) },
-                                onColdMark = { reason -> viewModel.coldMark(ember.id, reason) }
+                                onColdMark = { reason -> viewModel.coldMark(ember.id, reason) },
+                                onVotePoll = { yes -> viewModel.votePoll(ember.id, yes) },
+                                canModerate = isKeeper,
+                                onTogglePin = { viewModel.togglePin(ember) },
+                                onToggleWisdom = { viewModel.toggleWisdom(ember) }
                             )
                         }
                     }
@@ -148,23 +243,61 @@ fun TribeDetailScreen(
 @Composable
 private fun TribeDetailHeader(
     tribe: Tribe,
+    isKeeper: Boolean,
+    activity: Int,
     onToggleMembership: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = DurenShapes.large,
-        tonalElevation = 2.dp
+    // The header wears the same vibe gradient as the tribe's Discover tile, so the
+    // campfire keeps its colour when you step inside (user ask, 2026-06-11).
+    val accent = VibePalette.accent(tribe.vibe)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(DurenShapes.large)
+            .background(Brush.verticalGradient(VibePalette.gradient(tribe.vibe)))
+            .border(1.dp, accent.copy(alpha = 0.14f), DurenShapes.large)
+            .padding(DurenSpacing.space4)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(DurenSpacing.space4)
-        ) {
-            Text(
-                text = tribe.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (tribe.emoji.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(accent.copy(alpha = 0.30f), Color.Transparent)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = tribe.emoji, fontSize = 24.sp)
+                    }
+                    Spacer(Modifier.width(DurenSpacing.space2))
+                }
+                Text(
+                    text = tribe.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = DurenColors.TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                // See The Fire — the flame grows with the last half hour of embers.
+                SeeTheFire(activity = activity)
+            }
+
+            if (tribe.vibe.isNotBlank()) {
+                Spacer(Modifier.height(DurenSpacing.space1))
+                Text(
+                    text = tribe.vibe,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    color = DurenColors.AccentTeal
+                )
+            }
 
             if (tribe.genre.isNotBlank()) {
                 Spacer(Modifier.height(DurenSpacing.space1))
@@ -182,6 +315,31 @@ private fun TribeDetailHeader(
                         )
                     )
                 }
+            }
+
+            // Tribe Roles (F20) — the Keeper sees their key, a reminder they hold
+            // the pin + wisdom tools on every ember here.
+            if (isKeeper) {
+                Spacer(Modifier.height(DurenSpacing.space2))
+                Text(
+                    text = "🔑 You keep this fire",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = DurenColors.AccentTeal
+                )
+            }
+
+            // Invite code (F37) — members can hand these six digits to a friend.
+            if (tribe.isMember && tribe.inviteCode.isNotBlank()) {
+                val clipboard = LocalClipboardManager.current
+                Spacer(Modifier.height(DurenSpacing.space2))
+                Text(
+                    text = "🎟 Invite code ${tribe.inviteCode} · tap to copy",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = DurenColors.TextSecondary,
+                    modifier = Modifier.clickable {
+                        clipboard.setText(AnnotatedString(tribe.inviteCode))
+                    }
+                )
             }
 
             if (tribe.description.isNotBlank()) {
@@ -202,7 +360,8 @@ private fun TribeDetailHeader(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${tribe.memberCount} around the fire",
+                    text = "${tribe.memberCount} around the fire" +
+                        if (activity > 0) " · $activity just now" else "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -219,4 +378,370 @@ private fun TribeDetailHeader(
             }
         }
     }
+}
+
+/**
+ * See The Fire (F34) — a flame whose size and pulse follow the tribe's recent
+ * activity. Quiet tribe: small, slow. Busy tribe: big, fast. Derived purely from
+ * the embers already on screen, so it costs nothing.
+ */
+@Composable
+private fun SeeTheFire(activity: Int) {
+    val base = when {
+        activity >= 8 -> 1.2f
+        activity >= 3 -> 1.0f
+        else -> 0.85f
+    }
+    val period = if (activity >= 8) 1200 else 2600
+    val infinite = rememberInfiniteTransition(label = "see-the-fire")
+    val scale by infinite.animateFloat(
+        initialValue = base * 0.92f,
+        targetValue = base * 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(period, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "flame"
+    )
+    Text(text = "🔥", fontSize = 26.sp, modifier = Modifier.scale(scale))
+}
+
+/**
+ * Question of the Night (F22) — tonight's shared prompt, the same for everyone, sitting
+ * at the top of the tribe so there's always something to gather around.
+ */
+@Composable
+private fun QuestionOfNightCard() {
+    val prompt = remember { NightQuestions.forToday() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(DurenShapes.large)
+            .background(DurenColors.SurfacePrimary)
+            .padding(DurenSpacing.space4)
+    ) {
+        Text(
+            text = "QUESTION OF THE NIGHT",
+            fontSize = 11.sp,
+            letterSpacing = 1.5.sp,
+            fontWeight = FontWeight.Medium,
+            color = DurenColors.AccentTeal
+        )
+        Spacer(Modifier.height(DurenSpacing.space2))
+        Text(
+            text = prompt,
+            fontSize = 16.sp,
+            color = DurenColors.TextPrimary
+        )
+    }
+}
+
+/**
+ * Sub-Embers (F36) — topic chips. "All" shows the whole fire; a named chip narrows
+ * the feed to that thread; members get a "+ topic" chip to open a new one.
+ */
+@Composable
+private fun TopicRow(
+    topics: List<SubEmber>,
+    selectedId: String?,
+    canCreate: Boolean,
+    onSelect: (String?) -> Unit,
+    onNewTopic: () -> Unit
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
+        item(key = "all") {
+            TopicChip(
+                label = "All",
+                selected = selectedId == null,
+                onClick = { onSelect(null) }
+            )
+        }
+        items(items = topics, key = { it.id }) { topic ->
+            TopicChip(
+                label = "#${topic.name}" + if (topic.postCount > 0) " · ${topic.postCount}" else "",
+                selected = selectedId == topic.id,
+                onClick = { onSelect(if (selectedId == topic.id) null else topic.id) }
+            )
+        }
+        if (canCreate) {
+            item(key = "new") {
+                TopicChip(label = "+ topic", selected = false, onClick = onNewTopic)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopicChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(DurenShapes.pill)
+            .background(
+                if (selected) DurenColors.AccentTeal.copy(alpha = 0.18f)
+                else DurenColors.SurfacePrimary
+            )
+            .border(
+                1.dp,
+                if (selected) DurenColors.AccentTeal.copy(alpha = 0.6f)
+                else DurenColors.BorderDefault,
+                DurenShapes.pill
+            )
+            .clickable { onClick() }
+            .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space1)
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = if (selected) DurenColors.AccentTeal else DurenColors.TextSecondary
+        )
+    }
+}
+
+/** Open a topic thread (F36). Lowercase, hyphenated, like "#midnight-music". */
+@Composable
+private fun NewTopicDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Open a topic") },
+        text = {
+            Column {
+                Text(
+                    text = "A named thread inside this tribe — like #episode-drops or #midnight-music.",
+                    fontSize = 13.sp,
+                    color = DurenColors.TextSecondary
+                )
+                Spacer(Modifier.height(DurenSpacing.space3))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(24) },
+                    label = { Text("Topic name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreate(name) },
+                enabled = name.isNotBlank()
+            ) { Text("Open it") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Not now") }
+        }
+    )
+}
+
+/**
+ * Presence Beacon (F33) — a soft breathing dot and a count of who's gathered here in
+ * the last couple of minutes. The dot's glow rises and falls (Animation Bible A35,
+ * "Beacon Glow") so the fire feels lived-in even when no one's posting.
+ */
+@Composable
+private fun PresenceBeacon(count: Int) {
+    val infinite = rememberInfiniteTransition(label = "beacon")
+    val glow by infinite.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .alpha(glow)
+                .clip(CircleShape)
+                .background(DurenColors.AccentTeal)
+        )
+        Spacer(Modifier.width(DurenSpacing.space2))
+        Text(
+            text = if (count == 1) "Someone's around the fire right now"
+            else "$count around the fire right now",
+            fontSize = 13.sp,
+            color = DurenColors.AccentTeal
+        )
+    }
+}
+
+/**
+ * Tribe Bulletin Board (F21) — a horizontal strip of Keeper-curated notices that live
+ * for a day. Anyone can read them; only the Keeper sees the "pin a notice" tile and the
+ * little ✕ to take one down early.
+ */
+@Composable
+private fun BulletinBoard(
+    bulletins: List<Bulletin>,
+    isKeeper: Boolean,
+    onAdd: (title: String, text: String, emoji: String) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    var composing by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "ON THE BOARD",
+            fontSize = 11.sp,
+            letterSpacing = 1.5.sp,
+            fontWeight = FontWeight.Medium,
+            color = DurenColors.TextSecondary
+        )
+        Spacer(Modifier.height(DurenSpacing.space2))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
+            if (isKeeper) {
+                item(key = "add") {
+                    AddBulletinTile(onClick = { composing = true })
+                }
+            }
+            items(items = bulletins, key = { it.id }) { b ->
+                BulletinCard(
+                    bulletin = b,
+                    canDelete = isKeeper,
+                    onDelete = { onDelete(b.id) }
+                )
+            }
+        }
+    }
+
+    if (composing) {
+        AddBulletinDialog(
+            onDismiss = { composing = false },
+            onConfirm = { title, text, emoji ->
+                onAdd(title, text, emoji)
+                composing = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun BulletinCard(
+    bulletin: Bulletin,
+    canDelete: Boolean,
+    onDelete: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(220.dp)
+            .clip(DurenShapes.large)
+            .background(DurenColors.SurfaceElevated)
+            .padding(DurenSpacing.space3)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = bulletin.emoji.ifBlank { "📌" }, fontSize = 16.sp)
+            Spacer(Modifier.width(DurenSpacing.space2))
+            Text(
+                text = bulletin.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = DurenColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (canDelete) {
+                Text(
+                    text = "✕",
+                    fontSize = 14.sp,
+                    color = DurenColors.TextSecondary,
+                    modifier = Modifier.clickable { onDelete() }
+                )
+            }
+        }
+        if (bulletin.text.isNotBlank()) {
+            Spacer(Modifier.height(DurenSpacing.space1))
+            Text(
+                text = bulletin.text,
+                fontSize = 13.sp,
+                color = DurenColors.TextSecondary,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddBulletinTile(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(120.dp)
+            .height(96.dp)
+            .clip(DurenShapes.large)
+            .background(DurenColors.SurfacePrimary)
+            .clickable { onClick() }
+            .padding(DurenSpacing.space3),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "📌", fontSize = 20.sp)
+        Spacer(Modifier.height(DurenSpacing.space1))
+        Text(
+            text = "Pin a notice",
+            fontSize = 12.sp,
+            color = DurenColors.AccentTeal
+        )
+    }
+}
+
+@Composable
+private fun AddBulletinDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (title: String, text: String, emoji: String) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    var emoji by remember { mutableStateOf("📌") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pin a notice") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = emoji,
+                    onValueChange = { emoji = it.take(2) },
+                    label = { Text("Emoji") },
+                    singleLine = true,
+                    modifier = Modifier.width(96.dp)
+                )
+                Spacer(Modifier.height(DurenSpacing.space2))
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it.take(60) },
+                    label = { Text("Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(DurenSpacing.space2))
+                OutlinedTextField(
+                    value = body,
+                    onValueChange = { body = it.take(280) },
+                    label = { Text("Say more (optional)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(title, body, emoji) },
+                enabled = title.isNotBlank()
+            ) {
+                Text("Pin it")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }

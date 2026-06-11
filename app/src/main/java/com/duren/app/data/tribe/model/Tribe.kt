@@ -26,5 +26,9 @@ data class Tribe(
     // Evaluated entirely on-device via [com.duren.app.core.time.NightEconomy] —
     // no server, no per-country job. Older tribe docs default to off.
     val homeTimezone: String = "",
-    val deadHoursEnabled: Boolean = false
+    val deadHoursEnabled: Boolean = false,
+    // Six digits that open this campfire from anywhere (Feature 37). Derived
+    // deterministically from the tribe id, so old docs backfill identically
+    // from any device — no migration, no races.
+    val inviteCode: String = ""
 )

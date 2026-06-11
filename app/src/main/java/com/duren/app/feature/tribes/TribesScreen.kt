@@ -14,18 +14,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +56,7 @@ import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
+import com.duren.app.ui.theme.VibePalette
 
 /**
  * Discover — the tribe catalog as a 2-column grid of gradient tiles.
@@ -64,12 +74,38 @@ fun TribesScreen(
     viewModel: TribesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val joinState by viewModel.joinByCode.collectAsStateWithLifecycle()
+    var showCodeDialog by remember { mutableStateOf(false) }
+
+    // Joined via code → walk straight into the tribe.
+    LaunchedEffect(joinState) {
+        val joined = joinState as? JoinByCodeState.Joined ?: return@LaunchedEffect
+        showCodeDialog = false
+        viewModel.clearJoinByCode()
+        onOpenTribe(joined.tribeId)
+    }
+
+    if (showCodeDialog) {
+        JoinByCodeDialog(
+            state = joinState,
+            onSubmit = { viewModel.joinByCode(it) },
+            onDismiss = {
+                showCodeDialog = false
+                viewModel.clearJoinByCode()
+            }
+        )
+    }
 
     Scaffold(
         containerColor = DurenColors.BackgroundPrimary,
         topBar = {
             TopAppBar(
                 title = { Text("Discover") },
+                actions = {
+                    TextButton(onClick = { showCodeDialog = true }) {
+                        Text("Have a code?", color = DurenColors.AccentTeal, fontSize = 13.sp)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     titleContentColor = DurenColors.TextPrimary
@@ -147,15 +183,16 @@ private fun TribeTile(
     onToggleMembership: () -> Unit
 ) {
     val shape = RoundedCornerShape(16.dp)
+    val accent = VibePalette.accent(tribe.vibe)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(shape)
-            .background(Brush.verticalGradient(vibeGradient(tribe.vibe)))
+            .background(Brush.verticalGradient(VibePalette.gradient(tribe.vibe)))
             // A barely-there edge so the darkest gradients (e.g. "raw") still read
             // as a tile against the #0A0A0A canvas, without becoming a hard divider.
-            .border(1.dp, Color.White.copy(alpha = 0.06f), shape)
+            .border(1.dp, accent.copy(alpha = 0.14f), shape)
             .pressableCard(onClick = onOpen)
             .padding(DurenSpacing.space3)
     ) {
@@ -166,7 +203,20 @@ private fun TribeTile(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(DurenSpacing.space2))
-            Text(text = tribe.emoji.ifBlank { "🔥" }, fontSize = 34.sp)
+            // The tribe's emoji sits in its own pool of light — a soft radial wash
+            // of the vibe's accent, like a face lit by the fire it sits beside.
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(accent.copy(alpha = 0.30f), Color.Transparent)
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = tribe.emoji.ifBlank { "🔥" }, fontSize = 34.sp)
+            }
             Spacer(Modifier.height(DurenSpacing.space2))
             Text(
                 text = tribe.name,
@@ -245,33 +295,64 @@ private fun JoinPill(isMember: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * Dark gradient per vibe (two stops, vertical). Values stay within a few shades of
- * #0A0A0A so the grid never lights up — each vibe just leans toward its own hue.
- * Vibes the design didn't name fall back to sensible neighbours, then a neutral.
+ * Join a tribe by its 6-digit invite code (F37). The field only accepts digits;
+ * the button stays dark until all six are in.
  */
-private fun vibeGradient(vibe: String): List<Color> {
-    fun c(hex: Long) = Color(hex)
-    return when (vibe.trim().lowercase()) {
-        "energetic" -> listOf(c(0xFF1A0A00), c(0xFF2D1200))
-        "hype" -> listOf(c(0xFF1A001A), c(0xFF2D002D))
-        "competitive" -> listOf(c(0xFF001A2D), c(0xFF00263D))
-        "cozy" -> listOf(c(0xFF001A1A), c(0xFF002D2D))
-        "chill" -> listOf(c(0xFF0A0A1A), c(0xFF12122D))
-        "spooky" -> listOf(c(0xFF1A0A1A), c(0xFF000000))
-        "peaceful" -> listOf(c(0xFF001A0A), c(0xFF002D12))
-        "raw" -> listOf(c(0xFF1A1A1A), c(0xFF0A0A0A))
-        "safe" -> listOf(c(0xFF001A2D), c(0xFF001A3D))
-        "creative" -> listOf(c(0xFF1A1A00), c(0xFF2D2D00))
-        "niche" -> listOf(c(0xFF1A001A), c(0xFF2D002D))
-        "focused" -> listOf(c(0xFF001A1A), c(0xFF001A2D))
-        "stressed" -> listOf(c(0xFF2D0000), c(0xFF1A0000))
-        "geeky" -> listOf(c(0xFF001A00), c(0xFF002D00))
-        "chaotic" -> listOf(c(0xFF2D1A00), c(0xFF1A0D00))
-        // Fallbacks for seed vibes the design map didn't cover.
-        "intense" -> listOf(c(0xFF2D0A00), c(0xFF1A0500))
-        "calm" -> listOf(c(0xFF0A0A1A), c(0xFF10182D))
-        "confessional" -> listOf(c(0xFF14141A), c(0xFF0A0A0A))
-        "open" -> listOf(c(0xFF001A14), c(0xFF002D20))
-        else -> listOf(c(0xFF161616), c(0xFF0C0C0C))
-    }
+@Composable
+private fun JoinByCodeDialog(
+    state: JoinByCodeState,
+    onSubmit: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var code by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Join with a code") },
+        text = {
+            Column {
+                Text(
+                    text = "Six digits open the door to a campfire.",
+                    fontSize = 13.sp,
+                    color = DurenColors.TextSecondary
+                )
+                Spacer(Modifier.height(DurenSpacing.space3))
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it.filter(Char::isDigit).take(6) },
+                    label = { Text("Invite code") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (state is JoinByCodeState.Error) {
+                    Spacer(Modifier.height(DurenSpacing.space2))
+                    Text(
+                        text = state.message,
+                        fontSize = 12.sp,
+                        color = DurenColors.SemanticError
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (state is JoinByCodeState.Checking) {
+                CircularProgressIndicator(
+                    modifier = Modifier.height(20.dp).aspectRatio(1f),
+                    strokeWidth = 2.dp,
+                    color = DurenColors.AccentTeal
+                )
+            } else {
+                TextButton(
+                    onClick = { onSubmit(code) },
+                    enabled = code.length == 6
+                ) {
+                    Text("Step in")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Not now") }
+        }
+    )
 }
+

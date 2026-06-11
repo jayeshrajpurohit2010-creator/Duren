@@ -119,7 +119,10 @@ class EmberRepository @Inject constructor(
         mode: PostMode,
         mediaUri: Uri?,
         isFragment: Boolean = false,
-        fragmentThreshold: Int = 100
+        fragmentThreshold: Int = 100,
+        isPoll: Boolean = false,
+        subEmberId: String? = null,
+        subEmberName: String = ""
     ): Result<String> {
         val user = auth.currentUser ?: return Result.failure(DomainError.NotAuthenticated)
         val trimmed = text.trim()
@@ -157,8 +160,15 @@ class EmberRepository @Inject constructor(
                     "poeticAlias" to poeticAlias,
                     "isFragment" to fragment,
                     "fragmentThreshold" to fragmentThreshold,
+                    // Quick Poll: yes/no tallies live on the doc so the bar moves live.
+                    "isPoll" to isPoll,
+                    "pollYes" to 0,
+                    "pollNo" to 0,
                     "tribeId" to tribeId,
                     "tribeName" to tribeName.trim(),
+                    // Sub-Embers (F36): which topic thread this lives in, if any.
+                    "subEmberId" to subEmberId,
+                    "subEmberName" to subEmberName,
                     "text" to trimmed,
                     "mediaUrl" to mediaUrl,
                     "mediaType" to mediaType,
@@ -177,6 +187,19 @@ class EmberRepository @Inject constructor(
                     "extended" to false
                 )
             ).await()
+            // Sub-Embers (F36): mark the topic as alive. Best-effort — the post landed.
+            if (tribeId != null && !subEmberId.isNullOrBlank()) {
+                runCatching {
+                    firestore.collection(TRIBES).document(tribeId)
+                        .collection("subEmbers").document(subEmberId)
+                        .update(
+                            mapOf(
+                                "postCount" to FieldValue.increment(1),
+                                "lastActiveAt" to Timestamp.now()
+                            )
+                        ).await()
+                }
+            }
             Result.success(emberRef.id)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
@@ -199,6 +222,116 @@ class EmberRepository @Inject constructor(
             val snap = ref.get().await()
             if (snap.getString("authorId") != uid) return Result.failure(DomainError.Unknown)
             ref.delete().await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /**
+     * Cast a yes/no vote on a poll ember. One vote per user, write-once: the vote
+     * doc under `embers/{id}/pollVotes/{uid}` guards against double-counting in a
+     * transaction, then the matching tally is incremented. Voting again is a no-op.
+     */
+    suspend fun votePoll(emberId: String, yes: Boolean): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        val emberRef = firestore.collection(EMBERS).document(emberId)
+        val voteRef = emberRef.collection(POLL_VOTES).document(uid)
+        return try {
+            firestore.runTransaction { txn ->
+                if (txn.get(voteRef).exists()) return@runTransaction
+                txn.set(voteRef, mapOf("choice" to if (yes) "yes" else "no", "createdAt" to Timestamp.now()))
+                txn.update(emberRef, if (yes) "pollYes" else "pollNo", FieldValue.increment(1))
+            }.await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /** Which way the current user voted on a poll, or null if they haven't. */
+    suspend fun myPollVote(emberId: String): Boolean? {
+        val uid = auth.currentUser?.uid ?: return null
+        return try {
+            val snap = firestore.collection(EMBERS).document(emberId)
+                .collection(POLL_VOTES).document(uid).get().await()
+            when (snap.getString("choice")) {
+                "yes" -> true
+                "no" -> false
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** True if the caller created [tribeId] — the Keeper, who alone can pin or bless. */
+    private suspend fun isKeeperOf(tribeId: String): Boolean {
+        val uid = auth.currentUser?.uid ?: return false
+        return runCatching {
+            firestore.collection(TRIBES).document(tribeId).get().await()
+                .getString("createdBy") == uid
+        }.getOrDefault(false)
+    }
+
+    /**
+     * Floating Lantern — pin/unpin an ember to the top of its tribe (Keeper only).
+     * Pinning sets a 1h window; the feed treats a lapsed pin as unpinned. The ember
+     * `update` rule allows it because author/text/createdAt stay untouched.
+     */
+    suspend fun setPinned(emberId: String, tribeId: String, pinned: Boolean): Result<Unit> {
+        if (!isKeeperOf(tribeId)) return Result.failure(DomainError.Unknown)
+        return try {
+            val update = if (pinned) {
+                val now = Timestamp.now()
+                mapOf("isPinned" to true, "pinExpiresAt" to Timestamp(now.seconds + PIN_SECONDS, 0))
+            } else {
+                mapOf("isPinned" to false, "pinExpiresAt" to null)
+            }
+            firestore.collection(EMBERS).document(emberId).update(update).await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /**
+     * Embers of Wisdom — a Keeper blesses an ember: gold-edged, kept 30 days instead
+     * of 48h. Capped at five live per tribe. Un-blessing just drops the flag (the
+     * ember keeps whatever life it had left). Keeper-gated; rule-safe (only flags +
+     * expiry change, never author/text/createdAt).
+     */
+    suspend fun setWisdom(emberId: String, tribeId: String, wisdom: Boolean): Result<Unit> {
+        if (!isKeeperOf(tribeId)) return Result.failure(DomainError.Unknown)
+        return try {
+            if (wisdom) {
+                // Enforce the 5-slot cap on-device before blessing another. Single
+                // equality filter only (no composite index needed); wisdom + expiry
+                // are filtered here in memory.
+                val now = Timestamp.now()
+                val live = firestore.collection(EMBERS)
+                    .whereEqualTo("tribeId", tribeId)
+                    .get().await()
+                    .documents.count { doc ->
+                        doc.id != emberId &&
+                            doc.getBoolean("isWisdom") == true &&
+                            (doc.getTimestamp("wisdomExpiresAt")?.let { it > now } ?: false)
+                    }
+                if (live >= WISDOM_MAX) return Result.failure(DomainError.Unknown)
+                val expiry = Timestamp(now.seconds + WISDOM_SECONDS, 0)
+                firestore.collection(EMBERS).document(emberId).update(
+                    mapOf(
+                        "isWisdom" to true,
+                        "wisdomMarkedBy" to (auth.currentUser?.uid ?: ""),
+                        "wisdomExpiresAt" to expiry,
+                        // Lengthen the ember's own life so it doesn't burn at 48h.
+                        "expiresAt" to expiry
+                    )
+                ).await()
+            } else {
+                firestore.collection(EMBERS).document(emberId)
+                    .update(mapOf("isWisdom" to false)).await()
+            }
             Result.success(Unit)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
@@ -228,12 +361,62 @@ class EmberRepository @Inject constructor(
                 // Tell the author someone echoed (skipped automatically if it's you).
                 runCatching {
                     val authorId = emberRef.get().await().getString("authorId")
-                    if (authorId != null) signalRepository.notify(authorId, SignalType.Echo, emberId)
+                    if (authorId != null) {
+                        signalRepository.notify(authorId, SignalType.Echo, emberId)
+                        detectMutualSpark(uid, authorId)
+                    }
                 }
             }
             Result.success(nowEchoed)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /**
+     * Mutual Spark (F25), without a Cloud Function. Every echo writes a tiny
+     * directional edge (`echoEdges/{me}_{author}` with the time); we then read the
+     * reverse edge, and if they echoed us within the last 24h, that's a spark —
+     * recorded once per 24h under a sorted-pair id, and the other soul gets a Signal.
+     */
+    private suspend fun detectMutualSpark(me: String, author: String) {
+        if (me == author) return
+        val now = Timestamp.now()
+        firestore.collection(ECHO_EDGES).document("${me}_$author")
+            .set(mapOf("fromUid" to me, "toUid" to author, "lastEchoAt" to now)).await()
+
+        val reverse = firestore.collection(ECHO_EDGES).document("${author}_$me").get().await()
+        val theirLast = reverse.getTimestamp("lastEchoAt") ?: return
+        if (now.seconds - theirLast.seconds > SPARK_WINDOW_SECONDS) return
+
+        // Sorted pair id keeps one doc per pair regardless of who closed the loop.
+        val pair = listOf(me, author).sorted()
+        val sparkRef = firestore.collection(MUTUAL_SPARKS).document(pair.joinToString("_"))
+        val existing = sparkRef.get().await().getTimestamp("detectedAt")
+        val fresh = existing == null || now.seconds - existing.seconds > SPARK_WINDOW_SECONDS
+        if (!fresh) return
+
+        sparkRef.set(
+            mapOf(
+                "userA" to pair[0],
+                "userB" to pair[1],
+                "detectedAt" to now
+            )
+        ).await()
+        signalRepository.notify(author, SignalType.MutualSpark)
+    }
+
+    /** Is there a live (24h) Mutual Spark between me and [otherUid]? Drives the profile badge. */
+    suspend fun hasMutualSparkWith(otherUid: String): Boolean {
+        val me = auth.currentUser?.uid ?: return false
+        if (me == otherUid) return false
+        return try {
+            val pairId = listOf(me, otherUid).sorted().joinToString("_")
+            val detectedAt = firestore.collection(MUTUAL_SPARKS).document(pairId)
+                .get().await().getTimestamp("detectedAt") ?: return false
+            Timestamp.now().seconds - detectedAt.seconds <= SPARK_WINDOW_SECONDS
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -391,6 +574,16 @@ class EmberRepository @Inject constructor(
             poeticAlias = getString("poeticAlias") ?: "",
             isFragment = getBoolean("isFragment") == true,
             fragmentThreshold = (getLong("fragmentThreshold") ?: 0L).toInt(),
+            isPoll = getBoolean("isPoll") == true,
+            pollYes = (getLong("pollYes") ?: 0L).toInt(),
+            pollNo = (getLong("pollNo") ?: 0L).toInt(),
+            isPinned = getBoolean("isPinned") == true,
+            pinExpiresAt = getTimestamp("pinExpiresAt"),
+            isWisdom = getBoolean("isWisdom") == true,
+            wisdomExpiresAt = getTimestamp("wisdomExpiresAt"),
+            isFinal = getBoolean("isFinal") == true,
+            subEmberId = getString("subEmberId"),
+            subEmberName = getString("subEmberName") ?: "",
             createdAt = getTimestamp("createdAt"),
             expiresAt = getTimestamp("expiresAt"),
             echoCount = (getLong("echoCount") ?: 0L).toInt(),
@@ -405,11 +598,20 @@ class EmberRepository @Inject constructor(
         const val ECHOES = "echoes"
         const val COLD_MARKS = "coldMarks"
         const val WHISPERS = "whispers"
+        const val POLL_VOTES = "pollVotes"
         const val PROFILES = "profiles"
+        const val TRIBES = "tribes"
 
         const val LIFESPAN_SECONDS = 48L * 3600          // 48h default
         const val CEILING_SECONDS = 72L * 3600           // 72h Echo Extension ceiling
         const val EXTENSION_WINDOW_SECONDS = 30L * 60     // 30-minute echo window
         const val EXTENSION_THRESHOLD = 5                // echoes needed to extend
+        const val PIN_SECONDS = 60L * 60                  // Floating Lantern: 1h pin
+        const val WISDOM_SECONDS = 30L * 24 * 3600        // Embers of Wisdom: 30 days
+        const val WISDOM_MAX = 5                          // max live Wisdom per tribe
+
+        const val ECHO_EDGES = "echoEdges"                // F25: who echoed whom, when
+        const val MUTUAL_SPARKS = "mutualSparks"          // F25: one doc per sparked pair
+        const val SPARK_WINDOW_SECONDS = 24L * 3600       // both echoes within 24h
     }
 }

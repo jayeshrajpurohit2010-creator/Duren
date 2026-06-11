@@ -56,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.PostMode
+import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenColors
@@ -70,13 +71,18 @@ fun ComposeScreen(
 ) {
     val postState by viewModel.state.collectAsStateWithLifecycle()
     val myTribes by viewModel.myTribes.collectAsStateWithLifecycle()
+    val subEmbers by viewModel.subEmbers.collectAsStateWithLifecycle()
 
     // Local compose-field state
     var bodyText by rememberSaveable { mutableStateOf("") }
     var selectedTribe by remember { mutableStateOf<Tribe?>(null) }
+    // Sub-Embers (F36): an optional topic thread within the picked tribe.
+    var selectedTopic by remember { mutableStateOf<SubEmber?>(null) }
     var selectedMode by remember { mutableStateOf(PostMode.Named) }
     // Fragment mode: hide the body past ~100 chars until a reader echoes.
     var fragment by rememberSaveable { mutableStateOf(false) }
+    // Quick Poll: the body becomes a yes/no question. Mutually exclusive with Fragment.
+    var poll by rememberSaveable { mutableStateOf(false) }
     // Uri is Parcelable, so rememberSaveable keeps the captured photo across rotation.
     var mediaUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
@@ -108,15 +114,19 @@ fun ComposeScreen(
             bodyText = ""
             mediaUri = null
             selectedTribe = null
+            selectedTopic = null
+            viewModel.selectTribe(null)
             selectedMode = PostMode.Named
             fragment = false
+            poll = false
             cameraOpen = true // next ember starts at the camera again
             onPosted()
         }
     }
 
     val isPosting = postState is PostState.Posting
-    val canPost = !isPosting && (bodyText.isNotBlank() || mediaUri != null)
+    // A poll needs its question typed; otherwise text or a photo is enough.
+    val canPost = !isPosting && (bodyText.isNotBlank() || mediaUri != null) && (!poll || bodyText.isNotBlank())
 
     Scaffold(
         containerColor = DurenColors.BackgroundPrimary,
@@ -140,7 +150,7 @@ fun ComposeScreen(
             OutlinedTextField(
                 value = bodyText,
                 onValueChange = { if (it.length <= 500) bodyText = it },
-                label = { Text("What's alive right now?") },
+                label = { Text(if (poll) "Ask a yes / no question" else "What's alive right now?") },
                 supportingText = { Text("${bodyText.length}/500") },
                 minLines = 5,
                 modifier = Modifier.fillMaxWidth()
@@ -160,15 +170,49 @@ fun ComposeScreen(
                     // "The Clearing" chip — tribe = null (global feed)
                     FilterChip(
                         selected = selectedTribe == null,
-                        onClick = { selectedTribe = null },
+                        onClick = {
+                            selectedTribe = null
+                            selectedTopic = null
+                            viewModel.selectTribe(null)
+                        },
                         label = { Text("The Clearing") }
                     )
                     myTribes.forEach { tribe ->
                         FilterChip(
                             selected = selectedTribe?.id == tribe.id,
-                            onClick = { selectedTribe = tribe },
+                            onClick = {
+                                selectedTribe = tribe
+                                selectedTopic = null
+                                viewModel.selectTribe(tribe.id)
+                            },
                             label = { Text(tribe.name) }
                         )
+                    }
+                }
+                // Sub-Embers (F36): once a tribe with topics is picked, the ember can
+                // land in one of its threads. Optional — "the whole fire" is default.
+                if (selectedTribe != null && subEmbers.isNotEmpty()) {
+                    Text(
+                        text = "Into",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = DurenColors.TextMuted
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)
+                    ) {
+                        FilterChip(
+                            selected = selectedTopic == null,
+                            onClick = { selectedTopic = null },
+                            label = { Text("The whole fire") }
+                        )
+                        subEmbers.forEach { topic ->
+                            FilterChip(
+                                selected = selectedTopic?.id == topic.id,
+                                onClick = { selectedTopic = topic },
+                                label = { Text("#${topic.name}") }
+                            )
+                        }
                     }
                 }
             }
@@ -204,16 +248,37 @@ fun ComposeScreen(
                 }
             }
 
-            // Fragment toggle — only meaningful once the body runs long.
+            // Fragment + Poll toggles — two different shapes an ember can take.
+            // They're mutually exclusive: a poll has no "rest" to hide.
             Column(verticalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
-                FilterChip(
-                    selected = fragment,
-                    onClick = { fragment = !fragment },
-                    label = { Text("Fragment") }
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
+                    FilterChip(
+                        selected = fragment,
+                        onClick = {
+                            fragment = !fragment
+                            if (fragment) poll = false
+                        },
+                        label = { Text("Fragment") }
+                    )
+                    FilterChip(
+                        selected = poll,
+                        onClick = {
+                            poll = !poll
+                            if (poll) fragment = false
+                        },
+                        label = { Text("Poll") }
+                    )
+                }
                 if (fragment) {
                     Text(
                         text = "Hidden past 100 characters until someone echoes to reveal the rest.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = DurenColors.TextMuted
+                    )
+                }
+                if (poll) {
+                    Text(
+                        text = "A yes / no question. Everyone sees the split after they vote.",
                         style = MaterialTheme.typography.bodySmall,
                         color = DurenColors.TextMuted
                     )
@@ -308,7 +373,10 @@ fun ComposeScreen(
             // Release this ember — full-width teal pill, near-black label.
             Button(
                 onClick = {
-                    viewModel.post(bodyText, selectedTribe, selectedMode, mediaUri, fragment)
+                    viewModel.post(
+                        bodyText, selectedTribe, selectedMode, mediaUri, fragment, poll,
+                        subEmber = selectedTopic
+                    )
                 },
                 enabled = canPost,
                 colors = ButtonDefaults.buttonColors(
@@ -323,7 +391,11 @@ fun ComposeScreen(
                     .height(52.dp)
             ) {
                 Text(
-                    text = if (isPosting) "Releasing…" else "Release this ember 🔥",
+                    text = when {
+                        isPosting -> "Releasing…"
+                        poll -> "Open this poll 🔥"
+                        else -> "Release this ember 🔥"
+                    },
                     fontWeight = FontWeight.SemiBold
                 )
             }

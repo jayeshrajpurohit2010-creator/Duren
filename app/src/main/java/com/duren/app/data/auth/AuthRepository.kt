@@ -32,6 +32,13 @@ class AuthRepository @Inject constructor(
         awaitClose { auth.removeAuthStateListener(listener) }
     }
 
+    /**
+     * The session as Firebase restored it at process start — available synchronously,
+     * before the auth listener's first emission. Lets the nav graph start on the right
+     * side instead of flashing the sign-in screen at every cold launch.
+     */
+    val signedInNow: Boolean get() = auth.currentUser != null
+
     suspend fun isUsernameAvailable(username: String): Boolean {
         val normalized = username.trim().lowercase()
         if (!isValidUsernameFormat(normalized)) return false
