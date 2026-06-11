@@ -225,6 +225,25 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
+    // ===== Smoke Signals (F30) =====
+    // One broadcast to your whole Nest. Readable only by the sender and the people
+    // it was addressed to (the array-contains query proves membership of sentTo).
+    // The 1/week ration is enforced client-side; the rules keep authorship honest.
+    match /smokeSignals/{signalId} {
+      allow read: if isAuthed()
+        && (resource.data.fromUserId == request.auth.uid
+            || request.auth.uid in resource.data.sentTo);
+      allow create: if isAuthed()
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 280
+        && request.resource.data.sentTo is list
+        && request.resource.data.sentTo.size() > 0;
+      allow update: if false;
+      allow delete: if isAuthed() && resource.data.fromUserId == request.auth.uid;
+    }
+
     // ===== Testimonials (F27) =====
     // 150-char notes Nest members leave on a profile, 30 days each. Creation requires
     // the writer to actually be in the owner's Nest (the membership edge exists).

@@ -7,13 +7,18 @@ import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.nest.NestRepository
 import com.duren.app.data.profile.ProfileRepository
 import com.duren.app.data.profile.model.Profile
+import com.duren.app.data.smoke.SmokeSignalRepository
+import com.duren.app.data.smoke.model.SmokeOutcome
+import com.duren.app.data.smoke.model.SmokeSignal
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -29,7 +34,8 @@ import javax.inject.Inject
 class NestFeedViewModel @Inject constructor(
     private val nestRepository: NestRepository,
     private val emberRepository: EmberRepository,
-    private val profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val smokeSignalRepository: SmokeSignalRepository
 ) : ViewModel() {
 
     val currentUserId: String? get() = emberRepository.currentUserId
@@ -70,6 +76,26 @@ class NestFeedViewModel @Inject constructor(
     fun coldMark(emberId: String, reason: String) =
         viewModelScope.launch { emberRepository.coldMark(emberId, reason) }
     fun deleteEmber(emberId: String) = viewModelScope.launch { emberRepository.deleteEmber(emberId) }
+
+    /** Smoke Signals sent up for me — they ride at the top of the Nest feed (F30). */
+    val smokeSignals: StateFlow<List<SmokeSignal>> = smokeSignalRepository.observeIncoming()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // One-shot toast after a send attempt; the screen shows it then clears it.
+    private val _smokeMessage = MutableStateFlow<String?>(null)
+    val smokeMessage: StateFlow<String?> = _smokeMessage.asStateFlow()
+
+    /** Send one signal up to the whole Nest — rationed to one a week (F30). */
+    fun sendSmokeSignal(text: String) = viewModelScope.launch {
+        _smokeMessage.value = when (smokeSignalRepository.send(text)) {
+            SmokeOutcome.Sent -> "Your smoke is rising 💨"
+            SmokeOutcome.OncePerWeek -> "One signal a week — yours is still in the sky."
+            SmokeOutcome.EmptyNest -> "Your Nest is empty. There's no one to signal."
+            SmokeOutcome.Failed -> "The smoke wouldn't rise. Try again."
+        }
+    }
+
+    fun clearSmokeMessage() { _smokeMessage.value = null }
 
     private companion object {
         const val FEED_LIMIT = 60L
