@@ -100,6 +100,7 @@ fun PublicProfileScreen(
     val relation by viewModel.relation.collectAsStateWithLifecycle()
     val nudgeMessage by viewModel.nudgeMessage.collectAsStateWithLifecycle()
     val theirMood by viewModel.theirMood.collectAsStateWithLifecycle()
+    val mutualSpark by viewModel.mutualSpark.collectAsStateWithLifecycle()
 
     // Surface the nudge result as a brief toast, then clear it.
     val context = LocalContext.current
@@ -181,6 +182,15 @@ fun PublicProfileScreen(
                             style = MaterialTheme.typography.bodySmall,
                             fontStyle = FontStyle.Italic,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    // Mutual Spark (F25) — you echoed each other within 24h.
+                    if (mutualSpark) {
+                        Spacer(Modifier.height(DurenSpacing.space2))
+                        Text(
+                            text = "✨ Mutual Spark — your fires answered each other",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = DurenColors.AccentTeal
                         )
                     }
                 }

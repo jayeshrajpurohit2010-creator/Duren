@@ -225,6 +225,30 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
+    // ===== Echo edges (F25 Mutual Spark bookkeeping) =====
+    // One directional doc per (from → to) pair, stamped on every echo. You can only
+    // write the edge that starts at you, and its id must say so.
+    match /echoEdges/{edgeId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed()
+        && request.resource.data.fromUid == request.auth.uid
+        && edgeId == request.auth.uid + '_' + request.resource.data.toUid;
+    }
+
+    // ===== Mutual Sparks (F25) =====
+    // One doc per pair (sorted uids joined by "_"). Either half of the pair may
+    // record the spark; only the two of them can see it.
+    match /mutualSparks/{pairId} {
+      allow read: if isAuthed()
+        && (resource.data.userA == request.auth.uid
+            || resource.data.userB == request.auth.uid);
+      allow create, update: if isAuthed()
+        && (request.resource.data.userA == request.auth.uid
+            || request.resource.data.userB == request.auth.uid)
+        && pairId == request.resource.data.userA + '_' + request.resource.data.userB;
+      allow delete: if false;
+    }
+
     // ===== Mood Canvas (daily mood, F12) =====
     // Anyone authed can read it (your aura shows to others when you opt in);
     // only you write your own days.

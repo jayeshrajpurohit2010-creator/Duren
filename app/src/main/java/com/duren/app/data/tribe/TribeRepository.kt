@@ -142,10 +142,55 @@ class TribeRepository @Inject constructor(
                     "memberCount", FieldValue.increment(-1)
                 )
             }.await()
+            // Final Ember (F35): leave a candle at the door on the way out. Best-effort —
+            // the leave itself already succeeded.
+            runCatching { postFinalEmber(uid, tribeId) }
             Result.success(Unit)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
         }
+    }
+
+    /**
+     * The goodbye an ember leaves behind (F35): auto-posted into the tribe being left,
+     * marked [isFinal] so the card wears the candle and refuses echoes. 48h, like any
+     * ember. Doc shape mirrors EmberRepository.createEmber so every reader parses it.
+     */
+    private suspend fun postFinalEmber(uid: String, tribeId: String) {
+        val tribeDoc = firestore.collection(TRIBES).document(tribeId).get().await()
+        if (!tribeDoc.exists()) return
+        val profile = firestore.collection("profiles").document(uid).get().await()
+        val name = (profile.getString("displayName") ?: "").ifBlank { "A soul" }
+        val now = Timestamp.now()
+        firestore.collection("embers").document().set(
+            mapOf(
+                "authorId" to uid,
+                "authorName" to name,
+                "authorUsername" to (profile.getString("username") ?: ""),
+                "authorAvatarUrl" to (profile.getString("avatarUrl") ?: ""),
+                "authorAvatarColor" to (profile.getString("avatarColor") ?: "#FF6B35"),
+                "emberSignature" to "",
+                "poeticAlias" to "",
+                "isFragment" to false,
+                "fragmentThreshold" to 0,
+                "isPoll" to false,
+                "pollYes" to 0,
+                "pollNo" to 0,
+                "isFinal" to true,
+                "tribeId" to tribeId,
+                "tribeName" to (tribeDoc.getString("name") ?: ""),
+                "text" to "I'm leaving the campfire. Thanks for the warmth. — $name",
+                "mediaUrl" to null,
+                "mediaType" to null,
+                "mode" to "named",
+                "createdAt" to now,
+                "expiresAt" to Timestamp(now.seconds + 48L * 3600, 0),
+                "echoCount" to 0,
+                "coldMarkCount" to 0,
+                "whisperCount" to 0,
+                "extended" to false
+            )
+        ).await()
     }
 
     // ===== Tribe Bulletin Board (F21) — Keeper-curated notices, max 5, 24h life =====

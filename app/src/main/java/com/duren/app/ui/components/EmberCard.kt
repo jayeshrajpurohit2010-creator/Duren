@@ -178,7 +178,7 @@ fun EmberCard(
             }
     ) {
         // Keeper marks ride at the very top, above the author line.
-        if (ember.pinnedNow() || ember.isWisdom) {
+        if (ember.pinnedNow() || ember.isWisdom || ember.isFinal) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -199,6 +199,15 @@ fun EmberCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = WisdomGold
+                    )
+                }
+                if (ember.isFinal) {
+                    // A goodbye left behind on the way out of a tribe (F35).
+                    Text(
+                        text = "🕯️ Final Ember",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = DurenColors.TextSecondary
                     )
                 }
             }
@@ -372,7 +381,14 @@ fun EmberCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Row(
+                    if (ember.isFinal) {
+                        // Final Embers cannot be echoed (F35) — the goodbye just rests.
+                        Text(
+                            text = "🕯️ let it rest",
+                            fontSize = 12.sp,
+                            color = DurenColors.TextMuted
+                        )
+                    } else Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = if (interactive) {
                             Modifier.clickable(

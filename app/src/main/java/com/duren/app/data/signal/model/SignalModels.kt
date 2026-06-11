@@ -11,6 +11,10 @@ enum class SignalType(val wire: String) {
     Whisper("whisper"),
     Dm("dm"),
     Nudge("nudge"),
+    MutualSpark("mutual_spark"),
+    Hearth("hearth"),
+    Testimonial("testimonial"),
+    SmokeSignal("smoke_signal"),
     Unknown("unknown");
 
     companion object {

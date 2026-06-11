@@ -343,12 +343,62 @@ class EmberRepository @Inject constructor(
                 // Tell the author someone echoed (skipped automatically if it's you).
                 runCatching {
                     val authorId = emberRef.get().await().getString("authorId")
-                    if (authorId != null) signalRepository.notify(authorId, SignalType.Echo, emberId)
+                    if (authorId != null) {
+                        signalRepository.notify(authorId, SignalType.Echo, emberId)
+                        detectMutualSpark(uid, authorId)
+                    }
                 }
             }
             Result.success(nowEchoed)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /**
+     * Mutual Spark (F25), without a Cloud Function. Every echo writes a tiny
+     * directional edge (`echoEdges/{me}_{author}` with the time); we then read the
+     * reverse edge, and if they echoed us within the last 24h, that's a spark —
+     * recorded once per 24h under a sorted-pair id, and the other soul gets a Signal.
+     */
+    private suspend fun detectMutualSpark(me: String, author: String) {
+        if (me == author) return
+        val now = Timestamp.now()
+        firestore.collection(ECHO_EDGES).document("${me}_$author")
+            .set(mapOf("fromUid" to me, "toUid" to author, "lastEchoAt" to now)).await()
+
+        val reverse = firestore.collection(ECHO_EDGES).document("${author}_$me").get().await()
+        val theirLast = reverse.getTimestamp("lastEchoAt") ?: return
+        if (now.seconds - theirLast.seconds > SPARK_WINDOW_SECONDS) return
+
+        // Sorted pair id keeps one doc per pair regardless of who closed the loop.
+        val pairId = listOf(me, author).sorted().joinToString("_")
+        val sparkRef = firestore.collection(MUTUAL_SPARKS).document(pairId)
+        val existing = sparkRef.get().await().getTimestamp("detectedAt")
+        val fresh = existing == null || now.seconds - existing.seconds > SPARK_WINDOW_SECONDS
+        if (!fresh) return
+
+        sparkRef.set(
+            mapOf(
+                "userA" to listOf(me, author).sorted()[0],
+                "userB" to listOf(me, author).sorted()[1],
+                "detectedAt" to now
+            )
+        ).await()
+        signalRepository.notify(author, SignalType.MutualSpark)
+    }
+
+    /** Is there a live (24h) Mutual Spark between me and [otherUid]? Drives the profile badge. */
+    suspend fun hasMutualSparkWith(otherUid: String): Boolean {
+        val me = auth.currentUser?.uid ?: return false
+        if (me == otherUid) return false
+        return try {
+            val pairId = listOf(me, otherUid).sorted().joinToString("_")
+            val detectedAt = firestore.collection(MUTUAL_SPARKS).document(pairId)
+                .get().await().getTimestamp("detectedAt") ?: return false
+            Timestamp.now().seconds - detectedAt.seconds <= SPARK_WINDOW_SECONDS
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -513,6 +563,7 @@ class EmberRepository @Inject constructor(
             pinExpiresAt = getTimestamp("pinExpiresAt"),
             isWisdom = getBoolean("isWisdom") == true,
             wisdomExpiresAt = getTimestamp("wisdomExpiresAt"),
+            isFinal = getBoolean("isFinal") == true,
             createdAt = getTimestamp("createdAt"),
             expiresAt = getTimestamp("expiresAt"),
             echoCount = (getLong("echoCount") ?: 0L).toInt(),
@@ -538,5 +589,9 @@ class EmberRepository @Inject constructor(
         const val PIN_SECONDS = 60L * 60                  // Floating Lantern: 1h pin
         const val WISDOM_SECONDS = 30L * 24 * 3600        // Embers of Wisdom: 30 days
         const val WISDOM_MAX = 5                          // max live Wisdom per tribe
+
+        const val ECHO_EDGES = "echoEdges"                // F25: who echoed whom, when
+        const val MUTUAL_SPARKS = "mutualSparks"          // F25: one doc per sparked pair
+        const val SPARK_WINDOW_SECONDS = 24L * 3600       // both echoes within 24h
     }
 }

@@ -54,6 +54,16 @@ class PublicProfileViewModel @Inject constructor(
     private val _nudgeMessage = MutableStateFlow<String?>(null)
     val nudgeMessage: StateFlow<String?> = _nudgeMessage.asStateFlow()
 
+    // Mutual Spark (F25): true while there's a live 24h spark between us and them.
+    private val _mutualSpark = MutableStateFlow(false)
+    val mutualSpark: StateFlow<Boolean> = _mutualSpark.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _mutualSpark.value = emberRepository.hasMutualSparkWith(userId)
+        }
+    }
+
     fun addToNest() = viewModelScope.launch { nestRepository.sendRequest(userId) }
     fun cancelRequest() = viewModelScope.launch { nestRepository.cancelRequest(userId) }
     fun acceptRequest() = viewModelScope.launch { nestRepository.acceptRequest(userId) }

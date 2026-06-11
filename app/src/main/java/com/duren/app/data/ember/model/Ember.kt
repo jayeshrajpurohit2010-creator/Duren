@@ -67,6 +67,9 @@ data class Ember(
     // 30 days instead of burning at 48h. Max five live per tribe (enforced client-side).
     val isWisdom: Boolean = false,
     val wisdomExpiresAt: Timestamp? = null,
+    // Final Ember (Feature 35): the goodbye automatically left behind when someone
+    // walks away from a tribe. Candle-marked, and it cannot be echoed.
+    val isFinal: Boolean = false,
     val createdAt: Timestamp? = null,
     val expiresAt: Timestamp? = null,
     val echoCount: Int = 0,
