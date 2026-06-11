@@ -1,6 +1,7 @@
 package com.duren.app.data.tribe
 
 import com.duren.app.core.DomainError
+import com.duren.app.data.tribe.model.Bulletin
 import com.duren.app.data.tribe.model.Tribe
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -146,6 +147,95 @@ class TribeRepository @Inject constructor(
         }
     }
 
+    // ===== Tribe Bulletin Board (F21) — Keeper-curated notices, max 5, 24h life =====
+
+    fun observeBulletins(tribeId: String): Flow<List<Bulletin>> = callbackFlow {
+        val reg = firestore.collection(TRIBES).document(tribeId).collection(BULLETINS)
+            .addSnapshotListener { snap, _ ->
+                val now = Timestamp.now()
+                val list = snap?.documents?.map { doc ->
+                    Bulletin(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        text = doc.getString("text") ?: "",
+                        emoji = doc.getString("emoji") ?: "",
+                        createdAt = doc.getTimestamp("createdAt"),
+                        expiresAt = doc.getTimestamp("expiresAt")
+                    )
+                }?.filter { b -> b.expiresAt?.let { it > now } ?: true }
+                    ?.sortedByDescending { it.createdAt?.seconds ?: 0L }
+                    ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { reg.remove() }
+    }
+
+    /** Keeper posts a bulletin (24h). Caps at 5 live on-device; rules enforce Keeper-only. */
+    suspend fun addBulletin(tribeId: String, title: String, text: String, emoji: String): Result<Unit> {
+        auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        return try {
+            val now = Timestamp.now()
+            val col = firestore.collection(TRIBES).document(tribeId).collection(BULLETINS)
+            val live = col.get().await().documents.count { b ->
+                b.getTimestamp("expiresAt")?.let { it > now } ?: true
+            }
+            if (live >= 5) return Result.failure(DomainError.Unknown)
+            col.document().set(
+                mapOf(
+                    "title" to title.trim().take(60),
+                    "text" to text.trim().take(280),
+                    "emoji" to emoji.ifBlank { "📌" },
+                    "createdAt" to now,
+                    "expiresAt" to Timestamp(now.seconds + 24L * 3600, 0)
+                )
+            ).await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    suspend fun deleteBulletin(tribeId: String, bulletinId: String): Result<Unit> = try {
+        firestore.collection(TRIBES).document(tribeId).collection(BULLETINS)
+            .document(bulletinId).delete().await()
+        Result.success(Unit)
+    } catch (_: Exception) {
+        Result.failure(DomainError.Unknown)
+    }
+
+    // ===== Presence Beacon (F33) — who's around the fire right now =====
+
+    /** Mark me present at this tribe now (called on enter + every ~minute while viewing). */
+    suspend fun heartbeat(tribeId: String) {
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            firestore.collection(TRIBES).document(tribeId).collection(PRESENCE).document(uid)
+                .set(mapOf("lastActiveAt" to Timestamp.now())).await()
+        }
+    }
+
+    /** Drop my presence when I leave the tribe screen. */
+    suspend fun clearPresence(tribeId: String) {
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            firestore.collection(TRIBES).document(tribeId).collection(PRESENCE).document(uid)
+                .delete().await()
+        }
+    }
+
+    /** Live count of souls active here in the last 2 minutes. */
+    fun observePresentCount(tribeId: String): Flow<Int> = callbackFlow {
+        val reg = firestore.collection(TRIBES).document(tribeId).collection(PRESENCE)
+            .addSnapshotListener { snap, _ ->
+                val cutoff = Timestamp.now().seconds - 120
+                val count = snap?.documents?.count {
+                    (it.getTimestamp("lastActiveAt")?.seconds ?: 0L) >= cutoff
+                } ?: 0
+                trySend(count)
+            }
+        awaitClose { reg.remove() }
+    }
+
     private fun observeAllTribes(): Flow<List<Tribe>> = callbackFlow {
         val reg = firestore.collection(TRIBES)
             .orderBy("memberCount", Query.Direction.DESCENDING)
@@ -265,6 +355,8 @@ class TribeRepository @Inject constructor(
     companion object {
         const val TRIBES = "tribes"
         const val MEMBERSHIPS = "memberships"
+        const val BULLETINS = "bulletins"
+        const val PRESENCE = "presence"
 
         /** Lowercase, hyphenated, alnum-only doc id derived from a tribe name. */
         private fun slug(name: String): String =

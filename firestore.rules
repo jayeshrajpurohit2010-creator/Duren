@@ -56,6 +56,22 @@ service cloud.firestore {
         && request.resource.data.name == resource.data.name
         && request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if isAuthed() && resource.data.createdBy == request.auth.uid;
+
+      // Bulletin Board (F21) — only the Keeper (tribe creator) may pin or remove a
+      // notice; anyone authed can read the board.
+      match /bulletins/{bulletinId} {
+        allow read: if isAuthed();
+        allow create, delete: if isAuthed()
+          && get(/databases/$(database)/documents/tribes/$(tribeId)).data.createdBy == request.auth.uid;
+        allow update: if false;
+      }
+
+      // Presence Beacon (F33) — each soul writes only their own heartbeat doc; the
+      // whole tribe can read the beacon to see who's around the fire right now.
+      match /presence/{userId} {
+        allow read: if isAuthed();
+        allow write: if isOwner(userId);
+      }
     }
 
     // ===== Memberships (flat {uid}_{tribeId}) =====

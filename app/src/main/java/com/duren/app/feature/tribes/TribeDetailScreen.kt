@@ -7,7 +7,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,28 +18,38 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
@@ -47,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.tribe.NightQuestions
+import com.duren.app.data.tribe.model.Bulletin
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
@@ -139,6 +152,23 @@ fun TribeDetailScreen(
                                 activity = recentActivity,
                                 onToggleMembership = { viewModel.toggleMembership() }
                             )
+                        }
+                        if (uiState.presentCount > 0) {
+                            item(key = "presence") {
+                                PresenceBeacon(count = uiState.presentCount)
+                            }
+                        }
+                        if (uiState.bulletins.isNotEmpty() || isKeeper) {
+                            item(key = "bulletins") {
+                                BulletinBoard(
+                                    bulletins = uiState.bulletins,
+                                    isKeeper = isKeeper,
+                                    onAdd = { title, text, emoji ->
+                                        viewModel.addBulletin(title, text, emoji)
+                                    },
+                                    onDelete = { viewModel.deleteBulletin(it) }
+                                )
+                            }
                         }
                         item(key = "qotn") { QuestionOfNightCard() }
                     }
@@ -335,4 +365,214 @@ private fun QuestionOfNightCard() {
             color = DurenColors.TextPrimary
         )
     }
+}
+
+/**
+ * Presence Beacon (F33) — a soft breathing dot and a count of who's gathered here in
+ * the last couple of minutes. The dot's glow rises and falls (Animation Bible A35,
+ * "Beacon Glow") so the fire feels lived-in even when no one's posting.
+ */
+@Composable
+private fun PresenceBeacon(count: Int) {
+    val infinite = rememberInfiniteTransition(label = "beacon")
+    val glow by infinite.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .alpha(glow)
+                .clip(CircleShape)
+                .background(DurenColors.AccentTeal)
+        )
+        Spacer(Modifier.width(DurenSpacing.space2))
+        Text(
+            text = if (count == 1) "Someone's around the fire right now"
+            else "$count around the fire right now",
+            fontSize = 13.sp,
+            color = DurenColors.AccentTeal
+        )
+    }
+}
+
+/**
+ * Tribe Bulletin Board (F21) — a horizontal strip of Keeper-curated notices that live
+ * for a day. Anyone can read them; only the Keeper sees the "pin a notice" tile and the
+ * little ✕ to take one down early.
+ */
+@Composable
+private fun BulletinBoard(
+    bulletins: List<Bulletin>,
+    isKeeper: Boolean,
+    onAdd: (title: String, text: String, emoji: String) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    var composing by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "ON THE BOARD",
+            fontSize = 11.sp,
+            letterSpacing = 1.5.sp,
+            fontWeight = FontWeight.Medium,
+            color = DurenColors.TextSecondary
+        )
+        Spacer(Modifier.height(DurenSpacing.space2))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
+            if (isKeeper) {
+                item(key = "add") {
+                    AddBulletinTile(onClick = { composing = true })
+                }
+            }
+            items(items = bulletins, key = { it.id }) { b ->
+                BulletinCard(
+                    bulletin = b,
+                    canDelete = isKeeper,
+                    onDelete = { onDelete(b.id) }
+                )
+            }
+        }
+    }
+
+    if (composing) {
+        AddBulletinDialog(
+            onDismiss = { composing = false },
+            onConfirm = { title, text, emoji ->
+                onAdd(title, text, emoji)
+                composing = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun BulletinCard(
+    bulletin: Bulletin,
+    canDelete: Boolean,
+    onDelete: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(220.dp)
+            .clip(DurenShapes.large)
+            .background(DurenColors.SurfaceElevated)
+            .padding(DurenSpacing.space3)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = bulletin.emoji.ifBlank { "📌" }, fontSize = 16.sp)
+            Spacer(Modifier.width(DurenSpacing.space2))
+            Text(
+                text = bulletin.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = DurenColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (canDelete) {
+                Text(
+                    text = "✕",
+                    fontSize = 14.sp,
+                    color = DurenColors.TextSecondary,
+                    modifier = Modifier.clickable { onDelete() }
+                )
+            }
+        }
+        if (bulletin.text.isNotBlank()) {
+            Spacer(Modifier.height(DurenSpacing.space1))
+            Text(
+                text = bulletin.text,
+                fontSize = 13.sp,
+                color = DurenColors.TextSecondary,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddBulletinTile(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(120.dp)
+            .height(96.dp)
+            .clip(DurenShapes.large)
+            .background(DurenColors.SurfacePrimary)
+            .clickable { onClick() }
+            .padding(DurenSpacing.space3),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "📌", fontSize = 20.sp)
+        Spacer(Modifier.height(DurenSpacing.space1))
+        Text(
+            text = "Pin a notice",
+            fontSize = 12.sp,
+            color = DurenColors.AccentTeal
+        )
+    }
+}
+
+@Composable
+private fun AddBulletinDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (title: String, text: String, emoji: String) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    var emoji by remember { mutableStateOf("📌") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pin a notice") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = emoji,
+                    onValueChange = { emoji = it.take(2) },
+                    label = { Text("Emoji") },
+                    singleLine = true,
+                    modifier = Modifier.width(96.dp)
+                )
+                Spacer(Modifier.height(DurenSpacing.space2))
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it.take(60) },
+                    label = { Text("Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(DurenSpacing.space2))
+                OutlinedTextField(
+                    value = body,
+                    onValueChange = { body = it.take(280) },
+                    label = { Text("Say more (optional)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(title, body, emoji) },
+                enabled = title.isNotBlank()
+            ) {
+                Text("Pin it")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
