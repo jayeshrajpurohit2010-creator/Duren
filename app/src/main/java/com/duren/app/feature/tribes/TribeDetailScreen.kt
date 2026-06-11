@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +53,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,6 +72,7 @@ import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.DurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
+import com.duren.app.ui.theme.VibePalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -210,24 +216,42 @@ private fun TribeDetailHeader(
     activity: Int,
     onToggleMembership: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = DurenShapes.large,
-        tonalElevation = 2.dp
+    // The header wears the same vibe gradient as the tribe's Discover tile, so the
+    // campfire keeps its colour when you step inside (user ask, 2026-06-11).
+    val accent = VibePalette.accent(tribe.vibe)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(DurenShapes.large)
+            .background(Brush.verticalGradient(VibePalette.gradient(tribe.vibe)))
+            .border(1.dp, accent.copy(alpha = 0.14f), DurenShapes.large)
+            .padding(DurenSpacing.space4)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(DurenSpacing.space4)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (tribe.emoji.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(accent.copy(alpha = 0.30f), Color.Transparent)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = tribe.emoji, fontSize = 24.sp)
+                    }
+                    Spacer(Modifier.width(DurenSpacing.space2))
+                }
                 Text(
                     text = tribe.name,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
+                    color = DurenColors.TextPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 // See The Fire — the flame grows with the last half hour of embers.
@@ -270,6 +294,20 @@ private fun TribeDetailHeader(
                     text = "🔑 You keep this fire",
                     style = MaterialTheme.typography.labelSmall,
                     color = DurenColors.AccentTeal
+                )
+            }
+
+            // Invite code (F37) — members can hand these six digits to a friend.
+            if (tribe.isMember && tribe.inviteCode.isNotBlank()) {
+                val clipboard = LocalClipboardManager.current
+                Spacer(Modifier.height(DurenSpacing.space2))
+                Text(
+                    text = "🎟 Invite code ${tribe.inviteCode} · tap to copy",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = DurenColors.TextSecondary,
+                    modifier = Modifier.clickable {
+                        clipboard.setText(AnnotatedString(tribe.inviteCode))
+                    }
                 )
             }
 

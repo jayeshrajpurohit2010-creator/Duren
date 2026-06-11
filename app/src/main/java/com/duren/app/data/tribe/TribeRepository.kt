@@ -83,7 +83,8 @@ class TribeRepository @Inject constructor(
                         "genre" to genre.trim(),
                         "createdBy" to uid,
                         "createdAt" to FieldValue.serverTimestamp(),
-                        "memberCount" to 1
+                        "memberCount" to 1,
+                        "inviteCode" to inviteCodeFor(tribeRef.id)
                     )
                 )
                 batch.set(
@@ -203,6 +204,47 @@ class TribeRepository @Inject constructor(
         Result.failure(DomainError.Unknown)
     }
 
+    // ===== Tribe join via code (F37) — six digits open the door =====
+
+    /**
+     * Join a tribe by its 6-digit invite code. Single equality filter (no composite
+     * index); the membership write reuses [joinTribe]. Returns the tribe id so the
+     * caller can navigate straight in.
+     */
+    suspend fun joinByCode(rawCode: String): Result<String> {
+        auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        val code = rawCode.filter { it.isDigit() }
+        if (code.length != 6) return Result.failure(DomainError.TribeCodeNotFound)
+        return try {
+            val snap = firestore.collection(TRIBES)
+                .whereEqualTo("inviteCode", code)
+                .limit(1)
+                .get()
+                .await()
+            val doc = snap.documents.firstOrNull()
+                ?: return Result.failure(DomainError.TribeCodeNotFound)
+            val name = doc.getString("name") ?: ""
+            joinTribe(doc.id, name).map { doc.id }
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /**
+     * Backfill the invite code on tribes created before F37. The code is a pure
+     * function of the tribe id, so concurrent backfills from different devices
+     * write the same value — idempotent by construction.
+     */
+    suspend fun ensureInviteCode(tribeId: String) {
+        runCatching {
+            val ref = firestore.collection(TRIBES).document(tribeId)
+            val doc = ref.get().await()
+            if (doc.exists() && doc.getString("inviteCode").isNullOrBlank()) {
+                ref.update("inviteCode", inviteCodeFor(tribeId)).await()
+            }
+        }
+    }
+
     // ===== Presence Beacon (F33) — who's around the fire right now =====
 
     /** Mark me present at this tribe now (called on enter + every ~minute while viewing). */
@@ -251,7 +293,8 @@ class TribeRepository @Inject constructor(
                         emoji = doc.getString("emoji") ?: "",
                         createdBy = doc.getString("createdBy") ?: "",
                         createdAt = doc.getTimestamp("createdAt"),
-                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt()
+                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt(),
+                        inviteCode = doc.getString("inviteCode") ?: ""
                     )
                 } ?: emptyList()
                 trySend(list)
@@ -272,7 +315,8 @@ class TribeRepository @Inject constructor(
                         emoji = doc.getString("emoji") ?: "",
                         createdBy = doc.getString("createdBy") ?: "",
                         createdAt = doc.getTimestamp("createdAt"),
-                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt()
+                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt(),
+                        inviteCode = doc.getString("inviteCode") ?: ""
                     )
                 } else {
                     null
@@ -331,7 +375,8 @@ class TribeRepository @Inject constructor(
                             "emoji" to t.emoji,
                             "createdBy" to uid,
                             "createdAt" to FieldValue.serverTimestamp(),
-                            "memberCount" to 1
+                            "memberCount" to 1,
+                            "inviteCode" to inviteCodeFor(ref.id)
                         )
                     )
                 }
@@ -364,6 +409,17 @@ class TribeRepository @Inject constructor(
                 .replace(Regex("[^a-z0-9]+"), "-")
                 .trim('-')
                 .ifBlank { "tribe" }
+
+        /**
+         * The tribe's 6-digit invite code, derived from its doc id with a hand-rolled
+         * 31-multiplier hash (NOT String.hashCode — this one is ours, so the contract
+         * is explicit and survives any platform). Same id → same code, everywhere.
+         */
+        fun inviteCodeFor(tribeId: String): String {
+            var h = 0L
+            for (ch in tribeId) h = (h * 31 + ch.code) and 0x7FFFFFFF
+            return ((h % 900_000L) + 100_000L).toString()
+        }
 
         private val DEFAULT_TRIBES = listOf(
             // Anime & Manga

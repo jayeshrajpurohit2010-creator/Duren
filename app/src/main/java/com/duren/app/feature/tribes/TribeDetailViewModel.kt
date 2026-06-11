@@ -111,6 +111,8 @@ class TribeDetailViewModel @Inject constructor(
                 delay(60_000)
             }
         }
+        // F37: tribes born before invite codes get theirs the first time anyone walks in.
+        viewModelScope.launch { tribeRepository.ensureInviteCode(tribeId) }
     }
 
     override fun onCleared() {
