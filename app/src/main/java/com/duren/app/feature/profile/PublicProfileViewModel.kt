@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.Ember
+import com.duren.app.data.hearth.HearthRepository
 import com.duren.app.data.mood.MoodRepository
 import com.duren.app.data.mood.model.Mood
 import com.duren.app.data.nest.NestRepository
@@ -14,6 +15,8 @@ import com.duren.app.data.profile.ProfileRepository
 import com.duren.app.data.profile.model.Profile
 import com.duren.app.data.signal.SignalRepository
 import com.duren.app.data.signal.model.NudgeOutcome
+import com.duren.app.data.testimonial.TestimonialRepository
+import com.duren.app.data.testimonial.model.Testimonial
 import com.duren.app.feature.nav.PublicProfileRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +35,9 @@ class PublicProfileViewModel @Inject constructor(
     emberRepository: EmberRepository,
     moodRepository: MoodRepository,
     private val nestRepository: NestRepository,
-    private val signalRepository: SignalRepository
+    private val signalRepository: SignalRepository,
+    private val hearthRepository: HearthRepository,
+    private val testimonialRepository: TestimonialRepository
 ) : ViewModel() {
 
     val userId: String = savedStateHandle.toRoute<PublicProfileRoute>().userId
@@ -62,6 +67,26 @@ class PublicProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _mutualSpark.value = emberRepository.hasMutualSparkWith(userId)
         }
+    }
+
+    /** What the Nest says about them — 30d testimonials on their presence (F27). */
+    val testimonials: StateFlow<List<Testimonial>> = testimonialRepository.observeFor(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Warm their hearth (F26) — a private postcard only they will read. */
+    fun sendHearth(text: String) = viewModelScope.launch {
+        _nudgeMessage.value = hearthRepository.send(userId, text).fold(
+            onSuccess = { "You warmed their hearth 🔥" },
+            onFailure = { "The hearth wouldn't catch. Try again." }
+        )
+    }
+
+    /** Leave a testimonial on their presence (F27). */
+    fun writeTestimonial(text: String) = viewModelScope.launch {
+        _nudgeMessage.value = testimonialRepository.write(userId, text).fold(
+            onSuccess = { "Your words are on their presence ✨" },
+            onFailure = { "That didn't land. Try again." }
+        )
     }
 
     fun addToNest() = viewModelScope.launch { nestRepository.sendRequest(userId) }

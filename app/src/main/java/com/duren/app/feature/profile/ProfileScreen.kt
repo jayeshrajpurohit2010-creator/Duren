@@ -67,6 +67,8 @@ fun ProfileScreen(
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val myEmbers by viewModel.myEmbers.collectAsStateWithLifecycle()
     val myMood by viewModel.myMood.collectAsStateWithLifecycle()
+    val myHearth by viewModel.myHearth.collectAsStateWithLifecycle()
+    val myTestimonials by viewModel.myTestimonials.collectAsStateWithLifecycle()
 
     Scaffold(containerColor = DurenColors.BackgroundPrimary) { padding ->
         val p = profile
@@ -197,6 +199,92 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxWidth().height(52.dp)
                         ) {
                             Text("Sign out", color = DurenColors.TextSecondary)
+                        }
+                    }
+                }
+
+                // The Hearth (F26) — private postcards, owner-only, 24h each.
+                item {
+                    Spacer(Modifier.height(DurenSpacing.space8))
+                    Text(
+                        text = "THE HEARTH",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.5.sp,
+                        color = DurenColors.TextMuted,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = DurenSpacing.space6)
+                    )
+                    Spacer(Modifier.height(DurenSpacing.space3))
+                    if (myHearth.isEmpty()) {
+                        Text(
+                            text = "No one's warmed your hearth tonight.",
+                            fontSize = 14.sp,
+                            color = DurenColors.TextMuted,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = DurenSpacing.space6)
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = DurenSpacing.space6)
+                        ) {
+                            myHearth.forEach { h ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(DurenShapes.large)
+                                        .background(DurenColors.SurfacePrimary)
+                                        .padding(DurenSpacing.space3)
+                                ) {
+                                    Text(
+                                        text = h.text,
+                                        fontSize = 14.sp,
+                                        color = DurenColors.TextPrimary
+                                    )
+                                    Spacer(Modifier.height(DurenSpacing.space1))
+                                    Text(
+                                        text = "🔥 ${h.senderName.ifBlank { "A soul" }} warmed your hearth",
+                                        fontSize = 11.sp,
+                                        color = DurenColors.TextMuted
+                                    )
+                                }
+                                Spacer(Modifier.height(DurenSpacing.space2))
+                            }
+                        }
+                    }
+                }
+
+                // Testimonials on my presence (F27) — owner may let any fade early.
+                if (myTestimonials.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(DurenSpacing.space8))
+                        Text(
+                            text = "WHAT THE NEST SAYS",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 1.5.sp,
+                            color = DurenColors.TextMuted,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = DurenSpacing.space6)
+                        )
+                        Spacer(Modifier.height(DurenSpacing.space3))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = DurenSpacing.space6)
+                        ) {
+                            myTestimonials.forEach { t ->
+                                TestimonialCard(
+                                    testimonial = t,
+                                    onDelete = { viewModel.deleteTestimonial(t.id) }
+                                )
+                                Spacer(Modifier.height(DurenSpacing.space2))
+                            }
                         }
                     }
                 }

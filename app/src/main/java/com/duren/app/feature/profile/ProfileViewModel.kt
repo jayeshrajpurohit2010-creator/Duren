@@ -5,10 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.duren.app.data.auth.AuthRepository
 import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.Ember
+import com.duren.app.data.hearth.HearthRepository
+import com.duren.app.data.hearth.model.HearthEmber
 import com.duren.app.data.mood.MoodRepository
 import com.duren.app.data.mood.model.Mood
 import com.duren.app.data.profile.ProfileRepository
 import com.duren.app.data.profile.model.Profile
+import com.duren.app.data.testimonial.TestimonialRepository
+import com.duren.app.data.testimonial.model.Testimonial
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +32,9 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val emberRepository: EmberRepository,
     private val profileRepository: ProfileRepository,
-    private val moodRepository: MoodRepository
+    private val moodRepository: MoodRepository,
+    private val hearthRepository: HearthRepository,
+    private val testimonialRepository: TestimonialRepository
 ) : ViewModel() {
 
     val profile: StateFlow<Profile?> = authRepository.currentUser
@@ -67,6 +73,22 @@ class ProfileViewModel @Inject constructor(
                 deletedIds.update { ids -> ids - emberId }
             }
         }
+    }
+
+    /** My hearth — the private 24h postcards only I can read (F26). */
+    val myHearth: StateFlow<List<HearthEmber>> = hearthRepository.observeMine()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Testimonials on my presence (F27), with the owner's right to let any fade early. */
+    val myTestimonials: StateFlow<List<Testimonial>> = authRepository.currentUser
+        .flatMapLatest { user ->
+            if (user == null) flowOf(emptyList()) else testimonialRepository.observeFor(user.uid)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun deleteTestimonial(testimonialId: String) = viewModelScope.launch {
+        val uid = emberRepository.currentUserId ?: return@launch
+        testimonialRepository.delete(uid, testimonialId)
     }
 
     fun signOut() = authRepository.signOut()
