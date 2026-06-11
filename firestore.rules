@@ -72,6 +72,23 @@ service cloud.firestore {
         allow read: if isAuthed();
         allow write: if isOwner(userId);
       }
+
+      // Sub-Embers (F36) — topic threads. Anyone authed may open one in their own
+      // name; postCount/lastActiveAt bumps come from whoever posts; the Keeper may
+      // close a thread down.
+      match /subEmbers/{subEmberId} {
+        allow read: if isAuthed();
+        allow create: if isAuthed()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 30;
+        allow update: if isAuthed()
+          && request.resource.data.name == resource.data.name
+          && request.resource.data.createdBy == resource.data.createdBy;
+        allow delete: if isAuthed()
+          && get(/databases/$(database)/documents/tribes/$(tribeId)).data.createdBy == request.auth.uid;
+      }
     }
 
     // ===== Memberships (flat {uid}_{tribeId}) =====

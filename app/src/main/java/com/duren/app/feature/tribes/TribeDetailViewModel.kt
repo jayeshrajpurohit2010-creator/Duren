@@ -8,6 +8,7 @@ import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.tribe.TribeRepository
 import com.duren.app.data.tribe.model.Bulletin
+import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.feature.nav.TribeDetailRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -171,6 +172,15 @@ class TribeDetailViewModel @Inject constructor(
     /** Keeper blesses/un-blesses this ember as wisdom — gold, 30-day life (F23). */
     fun toggleWisdom(ember: Ember) {
         viewModelScope.launch { emberRepository.setWisdom(ember.id, tribeId, !ember.isWisdom) }
+    }
+
+    /** Topic threads in this tribe, busiest first (F36). The screen filters by them. */
+    val subEmbers: StateFlow<List<SubEmber>> = tribeRepository.observeSubEmbers(tribeId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Open a new topic thread (F36). Any member can; the slug keeps it idempotent. */
+    fun createSubEmber(name: String) {
+        viewModelScope.launch { tribeRepository.createSubEmber(tribeId, name) }
     }
 
     /** Keeper pins a notice to the Bulletin Board — title + body, 24h, max 5 (F21). */

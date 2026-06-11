@@ -47,6 +47,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +66,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.tribe.NightQuestions
 import com.duren.app.data.tribe.model.Bulletin
+import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
@@ -81,9 +83,23 @@ fun TribeDetailScreen(
     viewModel: TribeDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val subEmbers by viewModel.subEmbers.collectAsStateWithLifecycle()
     val tribe = uiState.tribe
     // The Keeper (tribe creator) gets the pin + wisdom tools on each ember.
     val isKeeper = tribe != null && tribe.createdBy == viewModel.currentUserId
+    // Sub-Embers (F36): which topic the feed is filtered to; null = the whole fire.
+    var selectedTopicId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showNewTopicDialog by remember { mutableStateOf(false) }
+
+    if (showNewTopicDialog) {
+        NewTopicDialog(
+            onDismiss = { showNewTopicDialog = false },
+            onCreate = {
+                viewModel.createSubEmber(it)
+                showNewTopicDialog = false
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -122,7 +138,9 @@ fun TribeDetailScreen(
 
             else -> {
                 val listState = rememberLazyListState()
-                val embers = uiState.embers
+                // Sub-Embers (F36): a chosen topic narrows the fire to that thread.
+                val embers = if (selectedTopicId == null) uiState.embers
+                else uiState.embers.filter { it.subEmberId == selectedTopicId }
                 val totalItems = embers.size
 
                 // See The Fire (F34): how many embers were lit in the last half hour —
@@ -177,6 +195,19 @@ fun TribeDetailScreen(
                             }
                         }
                         item(key = "qotn") { QuestionOfNightCard() }
+                        // Topic chips (F36) — shown once any topic exists; members can
+                        // always open one.
+                        if (subEmbers.isNotEmpty() || tribe.isMember) {
+                            item(key = "topics") {
+                                TopicRow(
+                                    topics = subEmbers,
+                                    selectedId = selectedTopicId,
+                                    canCreate = tribe.isMember,
+                                    onSelect = { selectedTopicId = it },
+                                    onNewTopic = { showNewTopicDialog = true }
+                                )
+                            }
+                        }
                     }
 
                     if (embers.isEmpty()) {
@@ -403,6 +434,106 @@ private fun QuestionOfNightCard() {
             color = DurenColors.TextPrimary
         )
     }
+}
+
+/**
+ * Sub-Embers (F36) — topic chips. "All" shows the whole fire; a named chip narrows
+ * the feed to that thread; members get a "+ topic" chip to open a new one.
+ */
+@Composable
+private fun TopicRow(
+    topics: List<SubEmber>,
+    selectedId: String?,
+    canCreate: Boolean,
+    onSelect: (String?) -> Unit,
+    onNewTopic: () -> Unit
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
+        item(key = "all") {
+            TopicChip(
+                label = "All",
+                selected = selectedId == null,
+                onClick = { onSelect(null) }
+            )
+        }
+        items(items = topics, key = { it.id }) { topic ->
+            TopicChip(
+                label = "#${topic.name}" + if (topic.postCount > 0) " · ${topic.postCount}" else "",
+                selected = selectedId == topic.id,
+                onClick = { onSelect(if (selectedId == topic.id) null else topic.id) }
+            )
+        }
+        if (canCreate) {
+            item(key = "new") {
+                TopicChip(label = "+ topic", selected = false, onClick = onNewTopic)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopicChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(DurenShapes.pill)
+            .background(
+                if (selected) DurenColors.AccentTeal.copy(alpha = 0.18f)
+                else DurenColors.SurfacePrimary
+            )
+            .border(
+                1.dp,
+                if (selected) DurenColors.AccentTeal.copy(alpha = 0.6f)
+                else DurenColors.BorderDefault,
+                DurenShapes.pill
+            )
+            .clickable { onClick() }
+            .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space1)
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = if (selected) DurenColors.AccentTeal else DurenColors.TextSecondary
+        )
+    }
+}
+
+/** Open a topic thread (F36). Lowercase, hyphenated, like "#midnight-music". */
+@Composable
+private fun NewTopicDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Open a topic") },
+        text = {
+            Column {
+                Text(
+                    text = "A named thread inside this tribe — like #episode-drops or #midnight-music.",
+                    fontSize = 13.sp,
+                    color = DurenColors.TextSecondary
+                )
+                Spacer(Modifier.height(DurenSpacing.space3))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(24) },
+                    label = { Text("Topic name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreate(name) },
+                enabled = name.isNotBlank()
+            ) { Text("Open it") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Not now") }
+        }
+    )
 }
 
 /**

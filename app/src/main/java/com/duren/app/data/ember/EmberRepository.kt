@@ -120,7 +120,9 @@ class EmberRepository @Inject constructor(
         mediaUri: Uri?,
         isFragment: Boolean = false,
         fragmentThreshold: Int = 100,
-        isPoll: Boolean = false
+        isPoll: Boolean = false,
+        subEmberId: String? = null,
+        subEmberName: String = ""
     ): Result<String> {
         val user = auth.currentUser ?: return Result.failure(DomainError.NotAuthenticated)
         val trimmed = text.trim()
@@ -164,6 +166,9 @@ class EmberRepository @Inject constructor(
                     "pollNo" to 0,
                     "tribeId" to tribeId,
                     "tribeName" to tribeName.trim(),
+                    // Sub-Embers (F36): which topic thread this lives in, if any.
+                    "subEmberId" to subEmberId,
+                    "subEmberName" to subEmberName,
                     "text" to trimmed,
                     "mediaUrl" to mediaUrl,
                     "mediaType" to mediaType,
@@ -182,6 +187,19 @@ class EmberRepository @Inject constructor(
                     "extended" to false
                 )
             ).await()
+            // Sub-Embers (F36): mark the topic as alive. Best-effort — the post landed.
+            if (tribeId != null && !subEmberId.isNullOrBlank()) {
+                runCatching {
+                    firestore.collection(TRIBES).document(tribeId)
+                        .collection("subEmbers").document(subEmberId)
+                        .update(
+                            mapOf(
+                                "postCount" to FieldValue.increment(1),
+                                "lastActiveAt" to Timestamp.now()
+                            )
+                        ).await()
+                }
+            }
             Result.success(emberRef.id)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
@@ -564,6 +582,8 @@ class EmberRepository @Inject constructor(
             isWisdom = getBoolean("isWisdom") == true,
             wisdomExpiresAt = getTimestamp("wisdomExpiresAt"),
             isFinal = getBoolean("isFinal") == true,
+            subEmberId = getString("subEmberId"),
+            subEmberName = getString("subEmberName") ?: "",
             createdAt = getTimestamp("createdAt"),
             expiresAt = getTimestamp("expiresAt"),
             echoCount = (getLong("echoCount") ?: 0L).toInt(),

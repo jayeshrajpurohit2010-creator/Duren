@@ -70,6 +70,9 @@ data class Ember(
     // Final Ember (Feature 35): the goodbye automatically left behind when someone
     // walks away from a tribe. Candle-marked, and it cannot be echoed.
     val isFinal: Boolean = false,
+    // Sub-Embers (Feature 36): the topic thread this ember was posted into, if any.
+    val subEmberId: String? = null,
+    val subEmberName: String = "",
     val createdAt: Timestamp? = null,
     val expiresAt: Timestamp? = null,
     val echoCount: Int = 0,

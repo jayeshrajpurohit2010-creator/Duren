@@ -2,6 +2,7 @@ package com.duren.app.data.tribe
 
 import com.duren.app.core.DomainError
 import com.duren.app.data.tribe.model.Bulletin
+import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -290,6 +291,55 @@ class TribeRepository @Inject constructor(
         }
     }
 
+    // ===== Sub-Embers (F36) — named topic threads inside a tribe =====
+
+    /** Live topics for a tribe, busiest first. */
+    fun observeSubEmbers(tribeId: String): Flow<List<SubEmber>> = callbackFlow {
+        val reg = firestore.collection(TRIBES).document(tribeId).collection(SUB_EMBERS)
+            .addSnapshotListener { snap, _ ->
+                val list = snap?.documents?.map { doc ->
+                    SubEmber(
+                        id = doc.id,
+                        name = doc.getString("name") ?: doc.id,
+                        description = doc.getString("description") ?: "",
+                        createdBy = doc.getString("createdBy") ?: "",
+                        postCount = (doc.getLong("postCount") ?: 0L).toInt(),
+                        lastActiveAt = doc.getTimestamp("lastActiveAt")
+                    )
+                }?.sortedByDescending { it.postCount } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { reg.remove() }
+    }
+
+    /**
+     * Open a topic. The slugged name doubles as the doc id, so two people opening
+     * "#hot takes" at once converge on one thread. Capped at [SUB_EMBER_MAX] per tribe.
+     */
+    suspend fun createSubEmber(tribeId: String, rawName: String): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        val name = slug(rawName.removePrefix("#"))
+        if (name.isBlank() || name == "tribe") return Result.failure(DomainError.Unknown)
+        return try {
+            val col = firestore.collection(TRIBES).document(tribeId).collection(SUB_EMBERS)
+            if (col.get().await().size() >= SUB_EMBER_MAX) return Result.failure(DomainError.Unknown)
+            val ref = col.document(name)
+            if (ref.get().await().exists()) return Result.success(Unit)
+            ref.set(
+                mapOf(
+                    "name" to name,
+                    "description" to "",
+                    "createdBy" to uid,
+                    "postCount" to 0,
+                    "lastActiveAt" to Timestamp.now()
+                )
+            ).await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
     // ===== Presence Beacon (F33) — who's around the fire right now =====
 
     /** Mark me present at this tribe now (called on enter + every ~minute while viewing). */
@@ -447,6 +497,8 @@ class TribeRepository @Inject constructor(
         const val MEMBERSHIPS = "memberships"
         const val BULLETINS = "bulletins"
         const val PRESENCE = "presence"
+        const val SUB_EMBERS = "subEmbers"
+        const val SUB_EMBER_MAX = 8
 
         /** Lowercase, hyphenated, alnum-only doc id derived from a tribe name. */
         private fun slug(name: String): String =

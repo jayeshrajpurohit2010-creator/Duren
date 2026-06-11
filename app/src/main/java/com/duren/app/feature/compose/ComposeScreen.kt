@@ -56,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.PostMode
+import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenColors
@@ -70,10 +71,13 @@ fun ComposeScreen(
 ) {
     val postState by viewModel.state.collectAsStateWithLifecycle()
     val myTribes by viewModel.myTribes.collectAsStateWithLifecycle()
+    val subEmbers by viewModel.subEmbers.collectAsStateWithLifecycle()
 
     // Local compose-field state
     var bodyText by rememberSaveable { mutableStateOf("") }
     var selectedTribe by remember { mutableStateOf<Tribe?>(null) }
+    // Sub-Embers (F36): an optional topic thread within the picked tribe.
+    var selectedTopic by remember { mutableStateOf<SubEmber?>(null) }
     var selectedMode by remember { mutableStateOf(PostMode.Named) }
     // Fragment mode: hide the body past ~100 chars until a reader echoes.
     var fragment by rememberSaveable { mutableStateOf(false) }
@@ -110,6 +114,8 @@ fun ComposeScreen(
             bodyText = ""
             mediaUri = null
             selectedTribe = null
+            selectedTopic = null
+            viewModel.selectTribe(null)
             selectedMode = PostMode.Named
             fragment = false
             poll = false
@@ -164,15 +170,49 @@ fun ComposeScreen(
                     // "The Clearing" chip — tribe = null (global feed)
                     FilterChip(
                         selected = selectedTribe == null,
-                        onClick = { selectedTribe = null },
+                        onClick = {
+                            selectedTribe = null
+                            selectedTopic = null
+                            viewModel.selectTribe(null)
+                        },
                         label = { Text("The Clearing") }
                     )
                     myTribes.forEach { tribe ->
                         FilterChip(
                             selected = selectedTribe?.id == tribe.id,
-                            onClick = { selectedTribe = tribe },
+                            onClick = {
+                                selectedTribe = tribe
+                                selectedTopic = null
+                                viewModel.selectTribe(tribe.id)
+                            },
                             label = { Text(tribe.name) }
                         )
+                    }
+                }
+                // Sub-Embers (F36): once a tribe with topics is picked, the ember can
+                // land in one of its threads. Optional — "the whole fire" is default.
+                if (selectedTribe != null && subEmbers.isNotEmpty()) {
+                    Text(
+                        text = "Into",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = DurenColors.TextMuted
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)
+                    ) {
+                        FilterChip(
+                            selected = selectedTopic == null,
+                            onClick = { selectedTopic = null },
+                            label = { Text("The whole fire") }
+                        )
+                        subEmbers.forEach { topic ->
+                            FilterChip(
+                                selected = selectedTopic?.id == topic.id,
+                                onClick = { selectedTopic = topic },
+                                label = { Text("#${topic.name}") }
+                            )
+                        }
                     }
                 }
             }
@@ -333,7 +373,10 @@ fun ComposeScreen(
             // Release this ember — full-width teal pill, near-black label.
             Button(
                 onClick = {
-                    viewModel.post(bodyText, selectedTribe, selectedMode, mediaUri, fragment, poll)
+                    viewModel.post(
+                        bodyText, selectedTribe, selectedMode, mediaUri, fragment, poll,
+                        subEmber = selectedTopic
+                    )
                 },
                 enabled = canPost,
                 colors = ButtonDefaults.buttonColors(

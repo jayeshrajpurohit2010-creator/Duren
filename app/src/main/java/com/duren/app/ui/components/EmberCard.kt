@@ -178,7 +178,7 @@ fun EmberCard(
             }
     ) {
         // Keeper marks ride at the very top, above the author line.
-        if (ember.pinnedNow() || ember.isWisdom || ember.isFinal) {
+        if (ember.pinnedNow() || ember.isWisdom || ember.isFinal || ember.subEmberName.isNotBlank()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -208,6 +208,15 @@ fun EmberCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = DurenColors.TextSecondary
+                    )
+                }
+                if (ember.subEmberName.isNotBlank()) {
+                    // The topic thread it lives in (F36).
+                    Text(
+                        text = "#${ember.subEmberName}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = DurenColors.TextMuted
                     )
                 }
             }
