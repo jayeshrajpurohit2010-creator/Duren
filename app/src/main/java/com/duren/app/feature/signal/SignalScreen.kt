@@ -151,6 +151,7 @@ private fun verbFor(type: SignalType): String = when (type) {
     SignalType.NestAccepted -> "joined your Nest"
     SignalType.Echo -> "echoed your ember"
     SignalType.Whisper -> "whispered on your ember"
+    SignalType.Reply -> "replied to your whisper"
     SignalType.Dm -> "sent you an ember"
     SignalType.Nudge -> "nudged you tonight 👀"
     SignalType.MutualSpark -> "sparked with you — you echoed each other ✨"

@@ -9,6 +9,7 @@ enum class SignalType(val wire: String) {
     NestAccepted("nest_accepted"),
     Echo("echo"),
     Whisper("whisper"),
+    Reply("reply"),
     Dm("dm"),
     Nudge("nudge"),
     MutualSpark("mutual_spark"),

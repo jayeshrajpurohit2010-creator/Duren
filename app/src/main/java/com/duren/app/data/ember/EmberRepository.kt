@@ -514,15 +514,28 @@ class EmberRepository @Inject constructor(
                 )
             ).await()
             emberRef.update("whisperCount", FieldValue.increment(1)).await()
-            // Notify the ember's author — never for anonymous whispers: the Signal
-            // carries the whisperer's uid and would quietly unmask them.
+            // Notify — never for anonymous whispers: the Signal carries the whisperer's
+            // uid and would quietly unmask them. notify() drops self-pings on its own.
             if (!anon) {
                 runCatching {
-                    val authorId = emberSnap.getString("authorId")
-                    if (authorId != null) {
-                        // No preview text: the whisper lives on the ember (which
-                        // expires); the non-expiring Signal must not keep a copy.
-                        signalRepository.notify(authorId, SignalType.Whisper, emberId)
+                    // No preview text on any of these: the whisper lives on the ember
+                    // (which expires); the non-expiring Signal must not keep a copy.
+                    val emberAuthorId = emberSnap.getString("authorId")
+                    // A reply reaches the soul you answered — telling them, not the OP,
+                    // is what makes a thread feel alive. Safe even if their whisper was
+                    // anonymous: it's their own inbox, and the actor (you) isn't masked.
+                    var repliedToAuthor: String? = null
+                    if (parentWhisperId != null) {
+                        repliedToAuthor = emberRef.collection(WHISPERS)
+                            .document(parentWhisperId).get().await().getString("authorId")
+                        if (repliedToAuthor != null) {
+                            signalRepository.notify(repliedToAuthor, SignalType.Reply, emberId)
+                        }
+                    }
+                    // The ember's author hears their post drew a whisper — but not twice
+                    // when they're also the one who was just replied to.
+                    if (emberAuthorId != null && emberAuthorId != repliedToAuthor) {
+                        signalRepository.notify(emberAuthorId, SignalType.Whisper, emberId)
                     }
                 }
             }
