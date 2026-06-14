@@ -2,6 +2,7 @@ package com.duren.app.feature.feed
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -39,6 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,6 +54,7 @@ import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.DurenMasthead
 import com.duren.app.ui.components.EmberCard
+import com.duren.app.ui.components.FloatingEmbers
 import com.duren.app.ui.components.NightBanner
 import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenSpacing
@@ -110,10 +115,14 @@ fun FeedScreen(
             )
         }
     ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        // Campfire ambience behind the feed — a teal ceiling-glow, a warm floor-glow,
+        // and a few embers drifting up, so the Clearing reads as a place to sit at
+        // rather than a list to scroll.
+        FeedAmbience(Modifier.matchParentSize())
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 // Horizontal swipe moves between the four sub-tabs — no tab bar.
                 .pointerInput(tab) {
                     var dx = 0f
@@ -218,8 +227,43 @@ fun FeedScreen(
                 }
             }
         }
+        }
     }
 }
+
+/**
+ * Campfire ambience drawn behind the feed: a teal ceiling-glow up top, a warm
+ * floor-glow at the foot, and a few embers drifting upward — the same Hero
+ * language as the landing, so the Clearing feels lit by a fire, not a white void.
+ */
+@Composable
+private fun FeedAmbience(modifier: Modifier = Modifier) {
+    Box(modifier) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(FeedTeal.copy(alpha = 0.06f), Color.Transparent),
+                    center = Offset(w * 0.5f, h * 0.12f),
+                    radius = maxOf(w, h) * 0.6f
+                )
+            )
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(FeedWarm.copy(alpha = 0.10f), Color.Transparent),
+                    center = Offset(w * 0.5f, h * 1.04f),
+                    radius = w * 0.9f
+                )
+            )
+        }
+        // A sparse drift — the feed should feel lived-in, not busy.
+        FloatingEmbers(modifier = Modifier.fillMaxSize(), count = 8)
+    }
+}
+
+private val FeedTeal = Color(0xFF2DD4BF)
+private val FeedWarm = Color(0xFFFFA040)
 
 /** Swipe distance (px) past which the feed switches sub-tab. */
 private const val SWIPE_THRESHOLD_PX = 64f
