@@ -3,6 +3,7 @@ package com.duren.app.feature.whisper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,12 +48,18 @@ import com.duren.app.ui.theme.DurenSpacing
  * When [forceAnonymous] every whisper here is posted faceless no matter what —
  * confessions keep their room safe. The repository enforces the same rule, so this
  * is just the honest UI for it.
+ *
+ * [emberAuthorId] marks the soul who lit the ember with a small "OP" badge when they
+ * whisper back. Pass it **only** when that author is already public (a Named ember) —
+ * leave it null for anonymous or confess embers, or the badge would quietly reveal
+ * who posted them. An anonymous whisper never gets the badge either, for the same reason.
  */
 @Composable
 fun WhisperThread(
     emberId: String,
     modifier: Modifier = Modifier,
     forceAnonymous: Boolean = false,
+    emberAuthorId: String? = null,
     viewModel: WhisperViewModel = hiltViewModel(key = "whisper_$emberId")
 ) {
     viewModel.bind(emberId)
@@ -85,6 +93,7 @@ fun WhisperThread(
                     childrenOf = byParent,
                     depth = 0,
                     myUid = myUid,
+                    emberAuthorId = emberAuthorId,
                     onReply = { replyTarget = it },
                     onDelete = { viewModel.delete(it) }
                 )
@@ -169,6 +178,7 @@ private fun WhisperNode(
     childrenOf: Map<String?, List<Whisper>>,
     depth: Int,
     myUid: String?,
+    emberAuthorId: String?,
     onReply: (Whisper) -> Unit,
     onDelete: (String) -> Unit
 ) {
@@ -187,6 +197,11 @@ private fun WhisperNode(
             WhisperRow(
                 whisper = whisper,
                 isMine = whisper.authorId == myUid,
+                // OP only when the ember's author is publicly known and this whisper
+                // isn't faceless — never let the badge out a hidden poster.
+                isOp = emberAuthorId != null &&
+                    whisper.authorId == emberAuthorId &&
+                    !whisper.isAnonymous,
                 onReply = { onReply(whisper) },
                 onDelete = { onDelete(whisper.id) }
             )
@@ -196,6 +211,7 @@ private fun WhisperNode(
                     childrenOf = childrenOf,
                     depth = depth + 1,
                     myUid = myUid,
+                    emberAuthorId = emberAuthorId,
                     onReply = onReply,
                     onDelete = onDelete
                 )
@@ -208,6 +224,7 @@ private fun WhisperNode(
 private fun WhisperRow(
     whisper: Whisper,
     isMine: Boolean,
+    isOp: Boolean,
     onReply: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -234,12 +251,18 @@ private fun WhisperRow(
         }
         Spacer(Modifier.width(DurenSpacing.space2))
         Column {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (isOp) {
+                    Spacer(Modifier.width(DurenSpacing.space2))
+                    OpBadge()
+                }
+            }
             Text(
                 text = whisper.text,
                 style = MaterialTheme.typography.bodyMedium,
@@ -255,6 +278,21 @@ private fun WhisperRow(
             )
         }
     }
+}
+
+/** The "OP" tag — the soul who lit the ember, replying in their own thread. */
+@Composable
+private fun OpBadge() {
+    Text(
+        text = "OP",
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+            .padding(horizontal = 6.dp, vertical = 1.dp)
+    )
 }
 
 /** How a whisper signs itself — "A Soul" when anonymous, else a name/handle. */

@@ -504,6 +504,9 @@ fun EmberCard(
                 emberId = ember.id,
                 // A confession keeps its room faceless: every whisper here is anonymous.
                 forceAnonymous = ember.mode == PostMode.Confess,
+                // Only badge the author as OP when they posted in the open — never on a
+                // masked ember, where it would reveal who's behind it.
+                emberAuthorId = if (ember.mode == PostMode.Named) ember.authorId else null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = contentPadding, vertical = DurenSpacing.space2)
