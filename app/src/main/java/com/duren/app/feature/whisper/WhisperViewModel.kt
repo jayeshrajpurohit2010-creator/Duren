@@ -40,9 +40,9 @@ class WhisperViewModel @Inject constructor(
         if (emberId.value != id) emberId.value = id
     }
 
-    fun add(text: String, isAnonymous: Boolean) {
+    fun add(text: String, isAnonymous: Boolean, parentWhisperId: String? = null) {
         val id = emberId.value ?: return
-        viewModelScope.launch { emberRepository.addWhisper(id, text, isAnonymous) }
+        viewModelScope.launch { emberRepository.addWhisper(id, text, isAnonymous, parentWhisperId) }
     }
 
     fun delete(whisperId: String) {

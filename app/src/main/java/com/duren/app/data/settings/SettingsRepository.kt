@@ -39,6 +39,17 @@ class SettingsRepository @Inject constructor(
         "showTestimonials" to showTestimonials
     )
 
+    // Per-field privacy writes. Toggling one switch must touch only its own field —
+    // re-writing all four from a possibly-stale snapshot could silently revert a
+    // change made a moment earlier (which read as "the toggles don't work").
+    suspend fun updateShowLantern(value: Boolean): Result<Unit> = update("showLantern" to value)
+    suspend fun updateShowMoodCanvas(value: Boolean): Result<Unit> = update("showMoodCanvas" to value)
+    suspend fun updateAllowAnonBox(value: Boolean): Result<Unit> = update("allowAnonBox" to value)
+    suspend fun updateShowTestimonials(value: Boolean): Result<Unit> = update("showTestimonials" to value)
+
+    /** Mark the "Find your fire" first-run flow done, so it never shows again. */
+    suspend fun markOnboarded(): Result<Unit> = update("hasOnboarded" to true)
+
     suspend fun updateAccount(
         displayName: String,
         bio: String,

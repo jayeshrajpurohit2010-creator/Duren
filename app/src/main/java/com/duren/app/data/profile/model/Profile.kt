@@ -27,5 +27,18 @@ data class Profile(
     val showLantern: Boolean = true,
     val showMoodCanvas: Boolean = false,
     val allowAnonBox: Boolean = true,
-    val showTestimonials: Boolean = false
-)
+    val showTestimonials: Boolean = false,
+    // First-run "Find your fire" flow. Defaults true so accounts created before
+    // onboarding existed (the field is absent) are never sent back through it; new
+    // sign-ups write it false explicitly and the flow flips it true on finish/skip.
+    val hasOnboarded: Boolean = true,
+    // Banked Status (AIM-style away, F11). [bankedUntil] auto-expires the note so a
+    // stale "back at 11PM" doesn't linger for days.
+    val bankedStatus: String = "",
+    val bankedUntil: Timestamp? = null
+) {
+    /** True while an away note is set and hasn't lapsed. */
+    val isBanked: Boolean
+        get() = bankedStatus.isNotBlank() &&
+            (bankedUntil?.let { it.toDate().time > System.currentTimeMillis() } ?: false)
+}

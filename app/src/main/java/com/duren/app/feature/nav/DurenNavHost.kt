@@ -13,6 +13,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.duren.app.feature.auth.AuthScreen
 import com.duren.app.feature.landing.LandingScreen
+import com.duren.app.feature.onboarding.OnboardingScreen
+import com.duren.app.feature.onboarding.OnboardingViewModel
 
 @Composable
 fun DurenNavHost(
@@ -45,9 +47,19 @@ fun DurenNavHost(
             }
         }
         composable<MainGraph> {
-            MainScaffold(
-                onSignedOut = { /* SessionViewModel re-emits, LaunchedEffect navigates */ }
-            )
+            // First-run gate: a brand-new soul picks their fires before the Clearing.
+            // Defaults to the app (needsOnboarding starts null) so returning users
+            // never flash the flow; it only appears once the profile says it's needed,
+            // and dismisses itself when the flow writes hasOnboarded = true.
+            val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+            val needsOnboarding by onboardingViewModel.needsOnboarding.collectAsStateWithLifecycle()
+            if (needsOnboarding == true) {
+                OnboardingScreen(viewModel = onboardingViewModel)
+            } else {
+                MainScaffold(
+                    onSignedOut = { /* SessionViewModel re-emits, LaunchedEffect navigates */ }
+                )
+            }
         }
     }
 }

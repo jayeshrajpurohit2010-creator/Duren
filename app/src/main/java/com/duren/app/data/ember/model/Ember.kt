@@ -54,6 +54,25 @@ data class Ember(
     // reveal is gated client-side by [Ember.echoedByMe].
     val isFragment: Boolean = false,
     val fragmentThreshold: Int = 0,
+    // Quick Poll (Feature 18): a yes/no question. The body is the question; the
+    // running tallies live on the doc so percentages update live for everyone.
+    val isPoll: Boolean = false,
+    val pollYes: Int = 0,
+    val pollNo: Int = 0,
+    // Floating Lantern (Feature 19): a tribe Keeper pins one ember for ~1h. Sorted
+    // to the top of its tribe while [pinExpiresAt] is in the future.
+    val isPinned: Boolean = false,
+    val pinExpiresAt: Timestamp? = null,
+    // Embers of Wisdom (Feature 23): a Keeper-blessed ember — gold-edged, kept for
+    // 30 days instead of burning at 48h. Max five live per tribe (enforced client-side).
+    val isWisdom: Boolean = false,
+    val wisdomExpiresAt: Timestamp? = null,
+    // Final Ember (Feature 35): the goodbye automatically left behind when someone
+    // walks away from a tribe. Candle-marked, and it cannot be echoed.
+    val isFinal: Boolean = false,
+    // Sub-Embers (Feature 36): the topic thread this ember was posted into, if any.
+    val subEmberId: String? = null,
+    val subEmberName: String = "",
     val createdAt: Timestamp? = null,
     val expiresAt: Timestamp? = null,
     val echoCount: Int = 0,
@@ -61,4 +80,8 @@ data class Ember(
     val whisperCount: Int = 0,
     val extended: Boolean = false,
     val echoedByMe: Boolean = false
-)
+) {
+    /** A pin only counts while it hasn't lapsed. */
+    fun pinnedNow(now: Timestamp = Timestamp.now()): Boolean =
+        isPinned && (pinExpiresAt?.let { it > now } ?: false)
+}

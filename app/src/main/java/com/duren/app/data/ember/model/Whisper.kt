@@ -20,5 +20,8 @@ data class Whisper(
     val authorAvatarColor: String = "#FF6B35",
     val text: String = "",
     val isAnonymous: Boolean = false,
+    // Threading: the whisper this one replies to, or null for a top-level whisper.
+    // The tree is rebuilt on-device from these parent links (no extra index needed).
+    val parentWhisperId: String? = null,
     val createdAt: Timestamp? = null
 )

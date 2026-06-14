@@ -68,6 +68,12 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.updatePrivacy(showLantern, showMoodCanvas, allowAnonBox, showTestimonials)
     }
 
+    // One setter per privacy switch, so a tap writes only that field.
+    fun setShowLantern(value: Boolean) = viewModelScope.launch { settingsRepository.updateShowLantern(value) }
+    fun setShowMoodCanvas(value: Boolean) = viewModelScope.launch { settingsRepository.updateShowMoodCanvas(value) }
+    fun setAllowAnonBox(value: Boolean) = viewModelScope.launch { settingsRepository.updateAllowAnonBox(value) }
+    fun setShowTestimonials(value: Boolean) = viewModelScope.launch { settingsRepository.updateShowTestimonials(value) }
+
     fun saveAccount(displayName: String, bio: String, pronouns: String, signature: String) =
         viewModelScope.launch {
             settingsRepository.updateAccount(displayName, bio, pronouns, signature)

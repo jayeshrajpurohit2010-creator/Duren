@@ -56,6 +56,39 @@ service cloud.firestore {
         && request.resource.data.name == resource.data.name
         && request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if isAuthed() && resource.data.createdBy == request.auth.uid;
+
+      // Bulletin Board (F21) — only the Keeper (tribe creator) may pin or remove a
+      // notice; anyone authed can read the board.
+      match /bulletins/{bulletinId} {
+        allow read: if isAuthed();
+        allow create, delete: if isAuthed()
+          && get(/databases/$(database)/documents/tribes/$(tribeId)).data.createdBy == request.auth.uid;
+        allow update: if false;
+      }
+
+      // Presence Beacon (F33) — each soul writes only their own heartbeat doc; the
+      // whole tribe can read the beacon to see who's around the fire right now.
+      match /presence/{userId} {
+        allow read: if isAuthed();
+        allow write: if isOwner(userId);
+      }
+
+      // Sub-Embers (F36) — topic threads. Anyone authed may open one in their own
+      // name; postCount/lastActiveAt bumps come from whoever posts; the Keeper may
+      // close a thread down.
+      match /subEmbers/{subEmberId} {
+        allow read: if isAuthed();
+        allow create: if isAuthed()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 30;
+        allow update: if isAuthed()
+          && request.resource.data.name == resource.data.name
+          && request.resource.data.createdBy == resource.data.createdBy;
+        allow delete: if isAuthed()
+          && get(/databases/$(database)/documents/tribes/$(tribeId)).data.createdBy == request.auth.uid;
+      }
     }
 
     // ===== Memberships (flat {uid}_{tribeId}) =====
@@ -105,6 +138,14 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 500;
         allow update: if false;
         allow delete: if isAuthed() && resource.data.authorId == request.auth.uid;
+      }
+
+      // Poll votes — one write-once doc per user, keyed by uid (Quick Poll, F18).
+      // The yes/no tally lives on the parent ember; this just guards one-vote-each.
+      match /pollVotes/{userId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if false;
       }
     }
 
@@ -199,6 +240,91 @@ service cloud.firestore {
         && request.resource.data.fromUserId == request.auth.uid;
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
+    }
+
+    // ===== Smoke Signals (F30) =====
+    // One broadcast to your whole Nest. Readable only by the sender and the people
+    // it was addressed to (the array-contains query proves membership of sentTo).
+    // The 1/week ration is enforced client-side; the rules keep authorship honest.
+    match /smokeSignals/{signalId} {
+      allow read: if isAuthed()
+        && (resource.data.fromUserId == request.auth.uid
+            || request.auth.uid in resource.data.sentTo);
+      allow create: if isAuthed()
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 280
+        && request.resource.data.sentTo is list
+        && request.resource.data.sentTo.size() > 0;
+      allow update: if false;
+      allow delete: if isAuthed() && resource.data.fromUserId == request.auth.uid;
+    }
+
+    // ===== Testimonials (F27) =====
+    // 150-char notes Nest members leave on a profile, 30 days each. Creation requires
+    // the writer to actually be in the owner's Nest (the membership edge exists).
+    // The owner or the author may take one down early.
+    match /testimonials/{userId}/items/{itemId} {
+      allow read: if isAuthed();
+      allow create: if isAuthed()
+        && request.auth.uid != userId
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 150
+        && exists(/databases/$(database)/documents/userNests/$(userId)/members/$(request.auth.uid));
+      allow update: if false;
+      allow delete: if isOwner(userId)
+        || (isAuthed() && resource.data.authorId == request.auth.uid);
+    }
+
+    // ===== The Hearth (F26) =====
+    // Private 24h postcards. Only the owner ever reads their hearth; only Nest
+    // members may warm it; the sender must sign their own name.
+    match /hearths/{userId}/embers/{emberId} {
+      allow read: if isOwner(userId);
+      allow create: if isAuthed()
+        && request.auth.uid != userId
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 280
+        && exists(/databases/$(database)/documents/userNests/$(userId)/members/$(request.auth.uid));
+      allow update: if false;
+      allow delete: if isOwner(userId);
+    }
+
+    // ===== Echo edges (F25 Mutual Spark bookkeeping) =====
+    // One directional doc per (from → to) pair, stamped on every echo. You can only
+    // write the edge that starts at you, and its id must say so.
+    match /echoEdges/{edgeId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed()
+        && request.resource.data.fromUid == request.auth.uid
+        && edgeId == request.auth.uid + '_' + request.resource.data.toUid;
+    }
+
+    // ===== Mutual Sparks (F25) =====
+    // One doc per pair (sorted uids joined by "_"). Either half of the pair may
+    // record the spark; only the two of them can see it.
+    match /mutualSparks/{pairId} {
+      allow read: if isAuthed()
+        && (resource.data.userA == request.auth.uid
+            || resource.data.userB == request.auth.uid);
+      allow create, update: if isAuthed()
+        && (request.resource.data.userA == request.auth.uid
+            || request.resource.data.userB == request.auth.uid)
+        && pairId == request.resource.data.userA + '_' + request.resource.data.userB;
+      allow delete: if false;
+    }
+
+    // ===== Mood Canvas (daily mood, F12) =====
+    // Anyone authed can read it (your aura shows to others when you opt in);
+    // only you write your own days.
+    match /moodCanvas/{userId}/days/{day} {
+      allow read: if isAuthed();
+      allow write: if isOwner(userId);
     }
 
     // ===== Deny by default for every other collection =====

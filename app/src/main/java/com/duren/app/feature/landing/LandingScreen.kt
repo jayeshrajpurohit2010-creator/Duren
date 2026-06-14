@@ -133,6 +133,13 @@ fun LandingScreen(onGetStarted: () -> Unit) {
                     color = Color(0xFFB4B4BB),
                     textAlign = TextAlign.Center
                 )
+                Spacer(Modifier.height(DurenSpacing.space3))
+                Text(
+                    text = "Not a feed to scroll — a fire to sit at, with your people, tonight. Everything burns in 48 hours. No permanence. No algorithm.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF8A8A92),
+                    textAlign = TextAlign.Center
+                )
             }
 
             Spacer(Modifier.weight(1f))

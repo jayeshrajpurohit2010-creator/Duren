@@ -223,6 +223,13 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    /** Cast a yes/no vote on a poll ember (F18). The live tally arrives via snapshot. */
+    fun votePoll(emberId: String, yes: Boolean) {
+        viewModelScope.launch {
+            emberRepository.votePoll(emberId, yes)
+        }
+    }
+
     /**
      * Delete one of the user's own embers. Hidden from the feed instantly; if the
      * server delete fails (e.g. rules not yet deployed) the id is un-hidden so the

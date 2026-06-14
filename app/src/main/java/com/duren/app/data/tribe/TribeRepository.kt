@@ -1,6 +1,8 @@
 package com.duren.app.data.tribe
 
 import com.duren.app.core.DomainError
+import com.duren.app.data.tribe.model.Bulletin
+import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -82,7 +84,8 @@ class TribeRepository @Inject constructor(
                         "genre" to genre.trim(),
                         "createdBy" to uid,
                         "createdAt" to FieldValue.serverTimestamp(),
-                        "memberCount" to 1
+                        "memberCount" to 1,
+                        "inviteCode" to inviteCodeFor(tribeRef.id)
                     )
                 )
                 batch.set(
@@ -140,10 +143,234 @@ class TribeRepository @Inject constructor(
                     "memberCount", FieldValue.increment(-1)
                 )
             }.await()
+            // Final Ember (F35): leave a candle at the door on the way out. Best-effort —
+            // the leave itself already succeeded.
+            runCatching { postFinalEmber(uid, tribeId) }
             Result.success(Unit)
         } catch (_: Exception) {
             Result.failure(DomainError.Unknown)
         }
+    }
+
+    /**
+     * The goodbye an ember leaves behind (F35): auto-posted into the tribe being left,
+     * marked [isFinal] so the card wears the candle and refuses echoes. 48h, like any
+     * ember. Doc shape mirrors EmberRepository.createEmber so every reader parses it.
+     */
+    private suspend fun postFinalEmber(uid: String, tribeId: String) {
+        val tribeDoc = firestore.collection(TRIBES).document(tribeId).get().await()
+        if (!tribeDoc.exists()) return
+        val profile = firestore.collection("profiles").document(uid).get().await()
+        val name = (profile.getString("displayName") ?: "").ifBlank { "A soul" }
+        val now = Timestamp.now()
+        firestore.collection("embers").document().set(
+            mapOf(
+                "authorId" to uid,
+                "authorName" to name,
+                "authorUsername" to (profile.getString("username") ?: ""),
+                "authorAvatarUrl" to (profile.getString("avatarUrl") ?: ""),
+                "authorAvatarColor" to (profile.getString("avatarColor") ?: "#FF6B35"),
+                "emberSignature" to "",
+                "poeticAlias" to "",
+                "isFragment" to false,
+                "fragmentThreshold" to 0,
+                "isPoll" to false,
+                "pollYes" to 0,
+                "pollNo" to 0,
+                "isFinal" to true,
+                "tribeId" to tribeId,
+                "tribeName" to (tribeDoc.getString("name") ?: ""),
+                "text" to "I'm leaving the campfire. Thanks for the warmth. — $name",
+                "mediaUrl" to null,
+                "mediaType" to null,
+                "mode" to "named",
+                "createdAt" to now,
+                "expiresAt" to Timestamp(now.seconds + 48L * 3600, 0),
+                "echoCount" to 0,
+                "coldMarkCount" to 0,
+                "whisperCount" to 0,
+                "extended" to false
+            )
+        ).await()
+    }
+
+    // ===== Tribe Bulletin Board (F21) — Keeper-curated notices, max 5, 24h life =====
+
+    fun observeBulletins(tribeId: String): Flow<List<Bulletin>> = callbackFlow {
+        val reg = firestore.collection(TRIBES).document(tribeId).collection(BULLETINS)
+            .addSnapshotListener { snap, _ ->
+                val now = Timestamp.now()
+                val list = snap?.documents?.map { doc ->
+                    Bulletin(
+                        id = doc.id,
+                        title = doc.getString("title") ?: "",
+                        text = doc.getString("text") ?: "",
+                        emoji = doc.getString("emoji") ?: "",
+                        createdAt = doc.getTimestamp("createdAt"),
+                        expiresAt = doc.getTimestamp("expiresAt")
+                    )
+                }?.filter { b -> b.expiresAt?.let { it > now } ?: true }
+                    ?.sortedByDescending { it.createdAt?.seconds ?: 0L }
+                    ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { reg.remove() }
+    }
+
+    /** Keeper posts a bulletin (24h). Caps at 5 live on-device; rules enforce Keeper-only. */
+    suspend fun addBulletin(tribeId: String, title: String, text: String, emoji: String): Result<Unit> {
+        auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        return try {
+            val now = Timestamp.now()
+            val col = firestore.collection(TRIBES).document(tribeId).collection(BULLETINS)
+            val live = col.get().await().documents.count { b ->
+                b.getTimestamp("expiresAt")?.let { it > now } ?: true
+            }
+            if (live >= 5) return Result.failure(DomainError.Unknown)
+            col.document().set(
+                mapOf(
+                    "title" to title.trim().take(60),
+                    "text" to text.trim().take(280),
+                    "emoji" to emoji.ifBlank { "📌" },
+                    "createdAt" to now,
+                    "expiresAt" to Timestamp(now.seconds + 24L * 3600, 0)
+                )
+            ).await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    suspend fun deleteBulletin(tribeId: String, bulletinId: String): Result<Unit> = try {
+        firestore.collection(TRIBES).document(tribeId).collection(BULLETINS)
+            .document(bulletinId).delete().await()
+        Result.success(Unit)
+    } catch (_: Exception) {
+        Result.failure(DomainError.Unknown)
+    }
+
+    // ===== Tribe join via code (F37) — six digits open the door =====
+
+    /**
+     * Join a tribe by its 6-digit invite code. Single equality filter (no composite
+     * index); the membership write reuses [joinTribe]. Returns the tribe id so the
+     * caller can navigate straight in.
+     */
+    suspend fun joinByCode(rawCode: String): Result<String> {
+        auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        val code = rawCode.filter { it.isDigit() }
+        if (code.length != 6) return Result.failure(DomainError.TribeCodeNotFound)
+        return try {
+            val snap = firestore.collection(TRIBES)
+                .whereEqualTo("inviteCode", code)
+                .limit(1)
+                .get()
+                .await()
+            val doc = snap.documents.firstOrNull()
+                ?: return Result.failure(DomainError.TribeCodeNotFound)
+            val name = doc.getString("name") ?: ""
+            joinTribe(doc.id, name).map { doc.id }
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    /**
+     * Backfill the invite code on tribes created before F37. The code is a pure
+     * function of the tribe id, so concurrent backfills from different devices
+     * write the same value — idempotent by construction.
+     */
+    suspend fun ensureInviteCode(tribeId: String) {
+        runCatching {
+            val ref = firestore.collection(TRIBES).document(tribeId)
+            val doc = ref.get().await()
+            if (doc.exists() && doc.getString("inviteCode").isNullOrBlank()) {
+                ref.update("inviteCode", inviteCodeFor(tribeId)).await()
+            }
+        }
+    }
+
+    // ===== Sub-Embers (F36) — named topic threads inside a tribe =====
+
+    /** Live topics for a tribe, busiest first. */
+    fun observeSubEmbers(tribeId: String): Flow<List<SubEmber>> = callbackFlow {
+        val reg = firestore.collection(TRIBES).document(tribeId).collection(SUB_EMBERS)
+            .addSnapshotListener { snap, _ ->
+                val list = snap?.documents?.map { doc ->
+                    SubEmber(
+                        id = doc.id,
+                        name = doc.getString("name") ?: doc.id,
+                        description = doc.getString("description") ?: "",
+                        createdBy = doc.getString("createdBy") ?: "",
+                        postCount = (doc.getLong("postCount") ?: 0L).toInt(),
+                        lastActiveAt = doc.getTimestamp("lastActiveAt")
+                    )
+                }?.sortedByDescending { it.postCount } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { reg.remove() }
+    }
+
+    /**
+     * Open a topic. The slugged name doubles as the doc id, so two people opening
+     * "#hot takes" at once converge on one thread. Capped at [SUB_EMBER_MAX] per tribe.
+     */
+    suspend fun createSubEmber(tribeId: String, rawName: String): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        val name = slug(rawName.removePrefix("#"))
+        if (name.isBlank() || name == "tribe") return Result.failure(DomainError.Unknown)
+        return try {
+            val col = firestore.collection(TRIBES).document(tribeId).collection(SUB_EMBERS)
+            if (col.get().await().size() >= SUB_EMBER_MAX) return Result.failure(DomainError.Unknown)
+            val ref = col.document(name)
+            if (ref.get().await().exists()) return Result.success(Unit)
+            ref.set(
+                mapOf(
+                    "name" to name,
+                    "description" to "",
+                    "createdBy" to uid,
+                    "postCount" to 0,
+                    "lastActiveAt" to Timestamp.now()
+                )
+            ).await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
+    // ===== Presence Beacon (F33) — who's around the fire right now =====
+
+    /** Mark me present at this tribe now (called on enter + every ~minute while viewing). */
+    suspend fun heartbeat(tribeId: String) {
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            firestore.collection(TRIBES).document(tribeId).collection(PRESENCE).document(uid)
+                .set(mapOf("lastActiveAt" to Timestamp.now())).await()
+        }
+    }
+
+    /** Drop my presence when I leave the tribe screen. */
+    suspend fun clearPresence(tribeId: String) {
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            firestore.collection(TRIBES).document(tribeId).collection(PRESENCE).document(uid)
+                .delete().await()
+        }
+    }
+
+    /** Live count of souls active here in the last 2 minutes. */
+    fun observePresentCount(tribeId: String): Flow<Int> = callbackFlow {
+        val reg = firestore.collection(TRIBES).document(tribeId).collection(PRESENCE)
+            .addSnapshotListener { snap, _ ->
+                val cutoff = Timestamp.now().seconds - 120
+                val count = snap?.documents?.count {
+                    (it.getTimestamp("lastActiveAt")?.seconds ?: 0L) >= cutoff
+                } ?: 0
+                trySend(count)
+            }
+        awaitClose { reg.remove() }
     }
 
     private fun observeAllTribes(): Flow<List<Tribe>> = callbackFlow {
@@ -161,7 +388,8 @@ class TribeRepository @Inject constructor(
                         emoji = doc.getString("emoji") ?: "",
                         createdBy = doc.getString("createdBy") ?: "",
                         createdAt = doc.getTimestamp("createdAt"),
-                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt()
+                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt(),
+                        inviteCode = doc.getString("inviteCode") ?: ""
                     )
                 } ?: emptyList()
                 trySend(list)
@@ -182,7 +410,8 @@ class TribeRepository @Inject constructor(
                         emoji = doc.getString("emoji") ?: "",
                         createdBy = doc.getString("createdBy") ?: "",
                         createdAt = doc.getTimestamp("createdAt"),
-                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt()
+                        memberCount = (doc.getLong("memberCount") ?: 0L).toInt(),
+                        inviteCode = doc.getString("inviteCode") ?: ""
                     )
                 } else {
                     null
@@ -220,16 +449,21 @@ class TribeRepository @Inject constructor(
     suspend fun seedDefaultTribes(): Result<Unit> {
         val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
         return try {
-            // Seed only the catalog tribes that are actually missing, so it works even
-            // when unrelated tribes already exist. Deterministic slug ids keep it
-            // idempotent (re-runs and concurrent devices converge on the same docs).
-            val existingIds = firestore.collection(TRIBES).limit(200).get().await()
-                .documents.map { it.id }.toSet()
-            val missing = DEFAULT_TRIBES.filter { slug(it.name) !in existingIds }
-            if (missing.isEmpty()) return Result.success(Unit)
+            // Seed any missing catalog tribes, and backfill the curated copy onto ones
+            // that were seeded earlier with the old auto-generated description.
+            // Deterministic slug ids keep it idempotent; the refresh only rewrites
+            // flavour text, so the tribe-update rule (name + createdBy must stay put)
+            // is satisfied.
+            val existingById = firestore.collection(TRIBES).limit(200).get().await()
+                .documents.associateBy { it.id }
+            val creates = DEFAULT_TRIBES.filter { existingById[slug(it.name)] == null }
+            val refreshes = DEFAULT_TRIBES.filter { t ->
+                existingById[slug(t.name)]?.getString("description")?.let { it != t.description } == true
+            }
+            if (creates.isEmpty() && refreshes.isEmpty()) return Result.success(Unit)
 
             firestore.runBatch { batch ->
-                missing.forEach { t ->
+                creates.forEach { t ->
                     val ref = firestore.collection(TRIBES).document(slug(t.name))
                     batch.set(
                         ref,
@@ -241,7 +475,19 @@ class TribeRepository @Inject constructor(
                             "emoji" to t.emoji,
                             "createdBy" to uid,
                             "createdAt" to FieldValue.serverTimestamp(),
-                            "memberCount" to 1
+                            "memberCount" to 1,
+                            "inviteCode" to inviteCodeFor(ref.id)
+                        )
+                    )
+                }
+                refreshes.forEach { t ->
+                    val ref = firestore.collection(TRIBES).document(slug(t.name))
+                    batch.update(
+                        ref,
+                        mapOf(
+                            "description" to t.description,
+                            "vibe" to t.vibe,
+                            "emoji" to t.emoji
                         )
                     )
                 }
@@ -256,15 +502,19 @@ class TribeRepository @Inject constructor(
         val name: String,
         val genre: String,
         val vibe: String,
-        val emoji: String
-    ) {
-        // A short ambient line — the campfire's character in one breath.
-        val description: String get() = "$emoji A $vibe $genre tribe."
-    }
+        val emoji: String,
+        // A hand-written one-liner — the campfire's character in a breath. This is
+        // what makes Discover read as chosen fires, not a generic list of rooms.
+        val description: String
+    )
 
     companion object {
         const val TRIBES = "tribes"
         const val MEMBERSHIPS = "memberships"
+        const val BULLETINS = "bulletins"
+        const val PRESENCE = "presence"
+        const val SUB_EMBERS = "subEmbers"
+        const val SUB_EMBER_MAX = 8
 
         /** Lowercase, hyphenated, alnum-only doc id derived from a tribe name. */
         private fun slug(name: String): String =
@@ -273,37 +523,48 @@ class TribeRepository @Inject constructor(
                 .trim('-')
                 .ifBlank { "tribe" }
 
+        /**
+         * The tribe's 6-digit invite code, derived from its doc id with a hand-rolled
+         * 31-multiplier hash (NOT String.hashCode — this one is ours, so the contract
+         * is explicit and survives any platform). Same id → same code, everywhere.
+         */
+        fun inviteCodeFor(tribeId: String): String {
+            var h = 0L
+            for (ch in tribeId) h = (h * 31 + ch.code) and 0x7FFFFFFF
+            return ((h % 900_000L) + 100_000L).toString()
+        }
+
         private val DEFAULT_TRIBES = listOf(
             // Anime & Manga
-            SeedTribe("Anime Late Night", "anime", "energetic", "🌙"),
-            SeedTribe("Manga Chapter Drops", "manga", "hype", "📖"),
-            SeedTribe("Shonen Nerds", "anime", "intense", "⚔️"),
-            SeedTribe("Slice of Life Club", "anime", "cozy", "☕"),
-            SeedTribe("Ghibli Hours", "anime", "peaceful", "🌿"),
+            SeedTribe("Anime Late Night", "anime", "energetic", "🌙", "Stay up talking about last night's episode. No spoilers till sunrise."),
+            SeedTribe("Manga Chapter Drops", "manga", "hype", "📖", "New chapter just dropped. Get in here before the spoilers do."),
+            SeedTribe("Shonen Nerds", "anime", "intense", "⚔️", "Power-scaling arguments that run till 4am. Bring receipts."),
+            SeedTribe("Slice of Life Club", "anime", "cozy", "☕", "Soft shows, softer nights. Bring tea."),
+            SeedTribe("Ghibli Hours", "anime", "peaceful", "🌿", "Quiet films and quieter feelings."),
             // Gaming
-            SeedTribe("Late Night Ranked", "gaming", "competitive", "🎮"),
-            SeedTribe("Gacha Pulls", "gaming", "chaotic", "🎰"),
-            SeedTribe("Indie Dev Lab", "gaming", "creative", "🛠️"),
-            SeedTribe("Minecraft After Dark", "gaming", "chill", "⛏️"),
-            SeedTribe("Horror Game Crew", "gaming", "spooky", "👻"),
+            SeedTribe("Late Night Ranked", "gaming", "competitive", "🎮", "One more game. It's always one more game."),
+            SeedTribe("Gacha Pulls", "gaming", "chaotic", "🎰", "Show the pull. We'll cry with you either way."),
+            SeedTribe("Indie Dev Lab", "gaming", "creative", "🛠️", "Building something at midnight. Ship it scared."),
+            SeedTribe("Minecraft After Dark", "gaming", "chill", "⛏️", "Torches up. The mobs and the vibes are both out tonight."),
+            SeedTribe("Horror Game Crew", "gaming", "spooky", "👻", "Play it with the lights off. Scream quietly."),
             // K-Pop & Music
-            SeedTribe("K-Pop Comeback Night", "kpop", "hype", "💜"),
-            SeedTribe("Lo-Fi Study Session", "music", "calm", "🎵"),
-            SeedTribe("Vocaloid Heads", "music", "niche", "🤖"),
-            SeedTribe("Beat Makers Den", "music", "creative", "🎧"),
+            SeedTribe("K-Pop Comeback Night", "kpop", "hype", "💜", "Comeback just dropped. Streaming party starts now."),
+            SeedTribe("Lo-Fi Study Session", "music", "calm", "🎵", "Beats, books, and the hum of other night owls."),
+            SeedTribe("Vocaloid Heads", "music", "niche", "🤖", "For the synths who never sleep."),
+            SeedTribe("Beat Makers Den", "music", "creative", "🎧", "Loop it, layer it, drop it before dawn."),
             // Study & Tech
-            SeedTribe("Study Grind", "study", "focused", "📚"),
-            SeedTribe("3AM Deadlines", "study", "stressed", "😭"),
-            SeedTribe("Dev Lounge", "tech", "geeky", "💻"),
+            SeedTribe("Study Grind", "study", "focused", "📚", "Post your 3am panic. Someone here is grinding too."),
+            SeedTribe("3AM Deadlines", "study", "stressed", "😭", "Due at 9. Started at 3. We're in this together."),
+            SeedTribe("Dev Lounge", "tech", "geeky", "💻", "Code at night, ship at night, celebrate at night."),
             // Life & Chill
-            SeedTribe("Insomnia Club", "life", "raw", "🌙"),
-            SeedTribe("Night Owls", "life", "chill", "🦉"),
-            SeedTribe("Midnight Snack", "food", "cozy", "🍜"),
-            SeedTribe("Vent Space", "mentalhealth", "safe", "💙"),
-            SeedTribe("Confession Booth", "anonymous", "raw", "🕯️"),
+            SeedTribe("Insomnia Club", "life", "raw", "🌙", "Can't sleep? Pull up a log by the fire."),
+            SeedTribe("Night Owls", "life", "chill", "🦉", "The world's asleep. We're just getting started."),
+            SeedTribe("Midnight Snack", "food", "cozy", "🍜", "What are you eating at this hour? Show us."),
+            SeedTribe("Vent Space", "mentalhealth", "safe", "💙", "Say the heavy thing. No one's keeping score."),
+            SeedTribe("Confession Booth", "anonymous", "raw", "🕯️", "Say what you can't say anywhere else. Stay a shadow."),
             // Special meta-tribes
-            SeedTribe("The Whisper Forest", "meta", "confessional", "🌲"),
-            SeedTribe("The Clearing", "meta", "open", "🏕️")
+            SeedTribe("The Whisper Forest", "meta", "confessional", "🌲", "Leave a confession between the trees. It fades by morning."),
+            SeedTribe("The Clearing", "meta", "open", "🏕️", "The open fire. Everyone's welcome — no genre required.")
         )
     }
 }

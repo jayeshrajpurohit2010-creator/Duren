@@ -44,7 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.dm.model.DmMessage
 import com.duren.app.ui.components.DurenIcon
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenSpacing
 import com.google.firebase.Timestamp
 
@@ -70,16 +70,16 @@ fun ChatScreen(
     val lastMine = messages.lastOrNull { it.senderId == me }?.id
 
     Scaffold(
-        containerColor = DurenColors.BackgroundPrimary,
+        containerColor = LocalDurenColors.current.BackgroundPrimary,
         topBar = {
             TopAppBar(
-                title = { Text(title, color = DurenColors.TextPrimary) },
+                title = { Text(title, color = LocalDurenColors.current.TextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = DurenColors.TextSecondary
+                            tint = LocalDurenColors.current.TextSecondary
                         )
                     }
                 },
@@ -90,7 +90,7 @@ fun ChatScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DurenColors.BackgroundSecondary)
+                    .background(LocalDurenColors.current.BackgroundSecondary)
                     .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space2),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -98,14 +98,14 @@ fun ChatScreen(
                     value = input,
                     onValueChange = { input = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Whisper into the dark…", color = DurenColors.TextDisabled) },
+                    placeholder = { Text("Whisper into the dark…", color = LocalDurenColors.current.TextDisabled) },
                     maxLines = 4,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = DurenColors.AccentTeal,
-                        unfocusedBorderColor = DurenColors.BorderDefault,
-                        focusedTextColor = DurenColors.TextPrimary,
-                        unfocusedTextColor = DurenColors.TextPrimary,
-                        cursorColor = DurenColors.AccentTeal
+                        focusedBorderColor = LocalDurenColors.current.AccentTeal,
+                        unfocusedBorderColor = LocalDurenColors.current.BorderDefault,
+                        focusedTextColor = LocalDurenColors.current.TextPrimary,
+                        unfocusedTextColor = LocalDurenColors.current.TextPrimary,
+                        cursorColor = LocalDurenColors.current.AccentTeal
                     )
                 )
                 Spacer(Modifier.width(DurenSpacing.space2))
@@ -123,7 +123,7 @@ fun ChatScreen(
                     DurenIcon(
                         DurenIcon.Send,
                         size = 22.dp,
-                        tint = if (input.isNotBlank()) DurenColors.AccentTeal else DurenColors.TextDisabled
+                        tint = if (input.isNotBlank()) LocalDurenColors.current.AccentTeal else LocalDurenColors.current.TextDisabled
                     )
                 }
             }
@@ -174,14 +174,14 @@ private fun MessageLine(
                         .padding(top = 7.dp, end = DurenSpacing.space2)
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(DurenColors.AccentTeal)
+                        .background(LocalDurenColors.current.AccentTeal)
                 )
             }
             Text(
                 text = message.text,
                 fontSize = 16.sp,
                 lineHeight = 22.sp,
-                color = if (mine) DurenColors.TextPrimary else DurenColors.TextSecondary
+                color = if (mine) LocalDurenColors.current.TextPrimary else LocalDurenColors.current.TextSecondary
             )
         }
         Spacer(Modifier.size(DurenSpacing.space1))
@@ -190,7 +190,7 @@ private fun MessageLine(
                 text = remainingLabel(message.expiresAt),
                 fontFamily = FontFamily.Monospace,
                 fontSize = 10.sp,
-                color = DurenColors.TextDisabled
+                color = LocalDurenColors.current.TextDisabled
             )
             if (mine && showSeen) {
                 Spacer(Modifier.width(DurenSpacing.space2))
@@ -199,7 +199,7 @@ private fun MessageLine(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium,
-                    color = if (seenByOther) DurenColors.AccentTeal else DurenColors.TextDisabled
+                    color = if (seenByOther) LocalDurenColors.current.AccentTeal else LocalDurenColors.current.TextDisabled
                 )
             }
         }

@@ -15,7 +15,9 @@ class SessionViewModel @Inject constructor(
     authRepository: AuthRepository
 ) : ViewModel() {
 
+    // Seeded from the synchronously-restored session, NOT a blanket `false` — otherwise
+    // every cold launch flashes the sign-in screen for a beat until the listener fires.
     val isAuthenticated: StateFlow<Boolean> = authRepository.currentUser
         .map { it != null }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, authRepository.signedInNow)
 }
