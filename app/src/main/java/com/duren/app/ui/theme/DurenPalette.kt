@@ -20,6 +20,9 @@ import androidx.compose.ui.graphics.Color
  * actually invert.
  */
 class DurenPalette(
+    // True for the dark (default) theme. Lets dark-only flourishes — e.g. the feed's
+    // campfire ambience — switch themselves off in light mode instead of looking muddy.
+    val isDark: Boolean,
     val BackgroundPrimary: Color,
     val BackgroundSecondary: Color,
     val BackgroundTertiary: Color,
@@ -53,6 +56,7 @@ class DurenPalette(
 
 /** Dark palette — the brand default, straight from [DurenColors]. */
 val DarkDurenPalette = DurenPalette(
+    isDark = true,
     BackgroundPrimary = DurenColors.BackgroundPrimary,
     BackgroundSecondary = DurenColors.BackgroundSecondary,
     BackgroundTertiary = DurenColors.BackgroundTertiary,
@@ -86,6 +90,7 @@ val DarkDurenPalette = DurenPalette(
 
 /** Light palette — surfaces/text/borders invert; brand + status hues stay put. */
 val LightDurenPalette = DurenPalette(
+    isDark = false,
     BackgroundPrimary = DurenColorsLight.BackgroundPrimary,
     BackgroundSecondary = DurenColorsLight.BackgroundSecondary,
     BackgroundTertiary = DurenColorsLight.BackgroundTertiary,

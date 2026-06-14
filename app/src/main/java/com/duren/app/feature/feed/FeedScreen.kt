@@ -118,8 +118,11 @@ fun FeedScreen(
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         // Campfire ambience behind the feed — a teal ceiling-glow, a warm floor-glow,
         // and a few embers drifting up, so the Clearing reads as a place to sit at
-        // rather than a list to scroll.
-        FeedAmbience(Modifier.matchParentSize())
+        // rather than a list to scroll. Dark-only: on the near-white light theme the
+        // warm glow just looks muddy, so it switches itself off.
+        if (LocalDurenColors.current.isDark) {
+            FeedAmbience(Modifier.matchParentSize())
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
