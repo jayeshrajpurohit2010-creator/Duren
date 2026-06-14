@@ -200,18 +200,10 @@ fun SettingsScreen(
 
             // ===== Privacy =====
             SectionHeader("Privacy")
-            RowToggle("Show Lantern", p.showLantern) {
-                viewModel.setPrivacy(it, p.showMoodCanvas, p.allowAnonBox, p.showTestimonials)
-            }
-            RowToggle("Show Mood Canvas", p.showMoodCanvas) {
-                viewModel.setPrivacy(p.showLantern, it, p.allowAnonBox, p.showTestimonials)
-            }
-            RowToggle("Allow Anonymous Box", p.allowAnonBox) {
-                viewModel.setPrivacy(p.showLantern, p.showMoodCanvas, it, p.showTestimonials)
-            }
-            RowToggle("Show Testimonials", p.showTestimonials) {
-                viewModel.setPrivacy(p.showLantern, p.showMoodCanvas, p.allowAnonBox, it)
-            }
+            RowToggle("Show Lantern", p.showLantern) { viewModel.setShowLantern(it) }
+            RowToggle("Show Mood Canvas", p.showMoodCanvas) { viewModel.setShowMoodCanvas(it) }
+            RowToggle("Allow Anonymous Box", p.allowAnonBox) { viewModel.setAllowAnonBox(it) }
+            RowToggle("Show Testimonials", p.showTestimonials) { viewModel.setShowTestimonials(it) }
 
             SectionDivider()
 
@@ -437,6 +429,11 @@ private fun SectionDivider() {
 
 @Composable
 private fun RowToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    // Optimistic: flip the moment it's tapped, then reconcile when the profile
+    // round-trips back. Without this the switch sat still until Firestore answered,
+    // which felt like the toggle was broken. remember(checked) re-seeds if the
+    // confirmed value ever disagrees (e.g. a write failed).
+    var local by remember(checked) { mutableStateOf(checked) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -445,7 +442,13 @@ private fun RowToggle(label: String, checked: Boolean, onCheckedChange: (Boolean
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(
+            checked = local,
+            onCheckedChange = {
+                local = it
+                onCheckedChange(it)
+            }
+        )
     }
 }
 
