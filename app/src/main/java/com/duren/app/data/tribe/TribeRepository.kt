@@ -449,16 +449,21 @@ class TribeRepository @Inject constructor(
     suspend fun seedDefaultTribes(): Result<Unit> {
         val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
         return try {
-            // Seed only the catalog tribes that are actually missing, so it works even
-            // when unrelated tribes already exist. Deterministic slug ids keep it
-            // idempotent (re-runs and concurrent devices converge on the same docs).
-            val existingIds = firestore.collection(TRIBES).limit(200).get().await()
-                .documents.map { it.id }.toSet()
-            val missing = DEFAULT_TRIBES.filter { slug(it.name) !in existingIds }
-            if (missing.isEmpty()) return Result.success(Unit)
+            // Seed any missing catalog tribes, and backfill the curated copy onto ones
+            // that were seeded earlier with the old auto-generated description.
+            // Deterministic slug ids keep it idempotent; the refresh only rewrites
+            // flavour text, so the tribe-update rule (name + createdBy must stay put)
+            // is satisfied.
+            val existingById = firestore.collection(TRIBES).limit(200).get().await()
+                .documents.associateBy { it.id }
+            val creates = DEFAULT_TRIBES.filter { existingById[slug(it.name)] == null }
+            val refreshes = DEFAULT_TRIBES.filter { t ->
+                existingById[slug(t.name)]?.getString("description")?.let { it != t.description } == true
+            }
+            if (creates.isEmpty() && refreshes.isEmpty()) return Result.success(Unit)
 
             firestore.runBatch { batch ->
-                missing.forEach { t ->
+                creates.forEach { t ->
                     val ref = firestore.collection(TRIBES).document(slug(t.name))
                     batch.set(
                         ref,
@@ -475,6 +480,17 @@ class TribeRepository @Inject constructor(
                         )
                     )
                 }
+                refreshes.forEach { t ->
+                    val ref = firestore.collection(TRIBES).document(slug(t.name))
+                    batch.update(
+                        ref,
+                        mapOf(
+                            "description" to t.description,
+                            "vibe" to t.vibe,
+                            "emoji" to t.emoji
+                        )
+                    )
+                }
             }.await()
             Result.success(Unit)
         } catch (_: Exception) {
@@ -486,11 +502,11 @@ class TribeRepository @Inject constructor(
         val name: String,
         val genre: String,
         val vibe: String,
-        val emoji: String
-    ) {
-        // A short ambient line — the campfire's character in one breath.
-        val description: String get() = "$emoji A $vibe $genre tribe."
-    }
+        val emoji: String,
+        // A hand-written one-liner — the campfire's character in a breath. This is
+        // what makes Discover read as chosen fires, not a generic list of rooms.
+        val description: String
+    )
 
     companion object {
         const val TRIBES = "tribes"
@@ -520,35 +536,35 @@ class TribeRepository @Inject constructor(
 
         private val DEFAULT_TRIBES = listOf(
             // Anime & Manga
-            SeedTribe("Anime Late Night", "anime", "energetic", "🌙"),
-            SeedTribe("Manga Chapter Drops", "manga", "hype", "📖"),
-            SeedTribe("Shonen Nerds", "anime", "intense", "⚔️"),
-            SeedTribe("Slice of Life Club", "anime", "cozy", "☕"),
-            SeedTribe("Ghibli Hours", "anime", "peaceful", "🌿"),
+            SeedTribe("Anime Late Night", "anime", "energetic", "🌙", "Stay up talking about last night's episode. No spoilers till sunrise."),
+            SeedTribe("Manga Chapter Drops", "manga", "hype", "📖", "New chapter just dropped. Get in here before the spoilers do."),
+            SeedTribe("Shonen Nerds", "anime", "intense", "⚔️", "Power-scaling arguments that run till 4am. Bring receipts."),
+            SeedTribe("Slice of Life Club", "anime", "cozy", "☕", "Soft shows, softer nights. Bring tea."),
+            SeedTribe("Ghibli Hours", "anime", "peaceful", "🌿", "Quiet films and quieter feelings."),
             // Gaming
-            SeedTribe("Late Night Ranked", "gaming", "competitive", "🎮"),
-            SeedTribe("Gacha Pulls", "gaming", "chaotic", "🎰"),
-            SeedTribe("Indie Dev Lab", "gaming", "creative", "🛠️"),
-            SeedTribe("Minecraft After Dark", "gaming", "chill", "⛏️"),
-            SeedTribe("Horror Game Crew", "gaming", "spooky", "👻"),
+            SeedTribe("Late Night Ranked", "gaming", "competitive", "🎮", "One more game. It's always one more game."),
+            SeedTribe("Gacha Pulls", "gaming", "chaotic", "🎰", "Show the pull. We'll cry with you either way."),
+            SeedTribe("Indie Dev Lab", "gaming", "creative", "🛠️", "Building something at midnight. Ship it scared."),
+            SeedTribe("Minecraft After Dark", "gaming", "chill", "⛏️", "Torches up. The mobs and the vibes are both out tonight."),
+            SeedTribe("Horror Game Crew", "gaming", "spooky", "👻", "Play it with the lights off. Scream quietly."),
             // K-Pop & Music
-            SeedTribe("K-Pop Comeback Night", "kpop", "hype", "💜"),
-            SeedTribe("Lo-Fi Study Session", "music", "calm", "🎵"),
-            SeedTribe("Vocaloid Heads", "music", "niche", "🤖"),
-            SeedTribe("Beat Makers Den", "music", "creative", "🎧"),
+            SeedTribe("K-Pop Comeback Night", "kpop", "hype", "💜", "Comeback just dropped. Streaming party starts now."),
+            SeedTribe("Lo-Fi Study Session", "music", "calm", "🎵", "Beats, books, and the hum of other night owls."),
+            SeedTribe("Vocaloid Heads", "music", "niche", "🤖", "For the synths who never sleep."),
+            SeedTribe("Beat Makers Den", "music", "creative", "🎧", "Loop it, layer it, drop it before dawn."),
             // Study & Tech
-            SeedTribe("Study Grind", "study", "focused", "📚"),
-            SeedTribe("3AM Deadlines", "study", "stressed", "😭"),
-            SeedTribe("Dev Lounge", "tech", "geeky", "💻"),
+            SeedTribe("Study Grind", "study", "focused", "📚", "Post your 3am panic. Someone here is grinding too."),
+            SeedTribe("3AM Deadlines", "study", "stressed", "😭", "Due at 9. Started at 3. We're in this together."),
+            SeedTribe("Dev Lounge", "tech", "geeky", "💻", "Code at night, ship at night, celebrate at night."),
             // Life & Chill
-            SeedTribe("Insomnia Club", "life", "raw", "🌙"),
-            SeedTribe("Night Owls", "life", "chill", "🦉"),
-            SeedTribe("Midnight Snack", "food", "cozy", "🍜"),
-            SeedTribe("Vent Space", "mentalhealth", "safe", "💙"),
-            SeedTribe("Confession Booth", "anonymous", "raw", "🕯️"),
+            SeedTribe("Insomnia Club", "life", "raw", "🌙", "Can't sleep? Pull up a log by the fire."),
+            SeedTribe("Night Owls", "life", "chill", "🦉", "The world's asleep. We're just getting started."),
+            SeedTribe("Midnight Snack", "food", "cozy", "🍜", "What are you eating at this hour? Show us."),
+            SeedTribe("Vent Space", "mentalhealth", "safe", "💙", "Say the heavy thing. No one's keeping score."),
+            SeedTribe("Confession Booth", "anonymous", "raw", "🕯️", "Say what you can't say anywhere else. Stay a shadow."),
             // Special meta-tribes
-            SeedTribe("The Whisper Forest", "meta", "confessional", "🌲"),
-            SeedTribe("The Clearing", "meta", "open", "🏕️")
+            SeedTribe("The Whisper Forest", "meta", "confessional", "🌲", "Leave a confession between the trees. It fades by morning."),
+            SeedTribe("The Clearing", "meta", "open", "🏕️", "The open fire. Everyone's welcome — no genre required.")
         )
     }
 }
