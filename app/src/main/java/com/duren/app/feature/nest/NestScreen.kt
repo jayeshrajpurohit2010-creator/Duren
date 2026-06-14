@@ -45,7 +45,7 @@ import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.ExpiryTimer
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 import androidx.compose.foundation.clickable
@@ -203,7 +203,7 @@ private fun LanternCard(
             Text(
                 text = if (mine) "🏮 your lantern" else "🏮 found in the dark",
                 style = MaterialTheme.typography.labelSmall,
-                color = DurenColors.TextMuted
+                color = LocalDurenColors.current.TextMuted
             )
 
             Spacer(Modifier.height(DurenSpacing.space2))
@@ -225,7 +225,7 @@ private fun LanternCard(
                 Text(
                     text = "🏮 found by ${lantern.foundCount}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = DurenColors.TextMuted
+                    color = LocalDurenColors.current.TextMuted
                 )
             }
         }
@@ -266,7 +266,7 @@ private fun LightLanternDialog(
                     Text(
                         text = lightState.message,
                         style = MaterialTheme.typography.bodySmall,
-                        color = DurenColors.SemanticError
+                        color = LocalDurenColors.current.SemanticError
                     )
                 }
             }

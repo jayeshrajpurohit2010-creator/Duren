@@ -51,7 +51,7 @@ import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.DurenMasthead
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.components.NightBanner
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenSpacing
 import kotlinx.coroutines.delay
 
@@ -239,7 +239,7 @@ private fun SubTabDots(selected: FeedTab, onSelect: (FeedTab) -> Unit) {
     ) {
         Text(
             text = selected.label,
-            color = DurenColors.AccentTeal,
+            color = LocalDurenColors.current.AccentTeal,
             style = MaterialTheme.typography.labelLarge
         )
         Spacer(Modifier.height(DurenSpacing.space2))
@@ -247,7 +247,7 @@ private fun SubTabDots(selected: FeedTab, onSelect: (FeedTab) -> Unit) {
             FeedTab.entries.forEach { feedTab ->
                 val active = feedTab == selected
                 val dotColor by animateColorAsState(
-                    targetValue = if (active) DurenColors.AccentTeal else DurenColors.TextDisabled,
+                    targetValue = if (active) LocalDurenColors.current.AccentTeal else LocalDurenColors.current.TextDisabled,
                     label = "dot"
                 )
                 val dotSize by animateDpAsState(

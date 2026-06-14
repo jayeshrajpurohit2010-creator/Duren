@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -129,7 +129,7 @@ fun CreateTribeScreen(
                 Text(
                     text = (createState as CreateState.Error).message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = DurenColors.SemanticError,
+                    color = LocalDurenColors.current.SemanticError,
                     modifier = Modifier.padding(horizontal = DurenSpacing.space1)
                 )
             }

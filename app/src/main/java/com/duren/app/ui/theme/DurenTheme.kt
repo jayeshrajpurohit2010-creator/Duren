@@ -6,6 +6,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -56,12 +57,17 @@ fun DurenTheme(
         )
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = durenTypography(),
-        shapes = durenShapes(),
-        content = content
-    )
+    // Provide the matching token palette so components that read LocalDurenColors
+    // recolor with the theme instead of baking in the dark set.
+    val palette = if (darkTheme) DarkDurenPalette else LightDurenPalette
+    CompositionLocalProvider(LocalDurenColors provides palette) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = durenTypography(),
+            shapes = durenShapes(),
+            content = content
+        )
+    }
 }
 
 private fun durenTypography(): Typography = Typography(

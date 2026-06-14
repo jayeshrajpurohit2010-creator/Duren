@@ -60,7 +60,7 @@ import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.ember.model.PostMode
 import com.duren.app.feature.whisper.WhisperThread
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 import kotlinx.coroutines.launch
@@ -190,7 +190,7 @@ fun EmberCard(
                         text = "📌 Floating Lantern",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = DurenColors.AccentTeal
+                        color = LocalDurenColors.current.AccentTeal
                     )
                 }
                 if (ember.isWisdom) {
@@ -207,7 +207,7 @@ fun EmberCard(
                         text = "🕯️ Final Ember",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = DurenColors.TextSecondary
+                        color = LocalDurenColors.current.TextSecondary
                     )
                 }
                 if (ember.subEmberName.isNotBlank()) {
@@ -216,7 +216,7 @@ fun EmberCard(
                         text = "#${ember.subEmberName}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = DurenColors.TextMuted
+                        color = LocalDurenColors.current.TextMuted
                     )
                 }
             }
@@ -234,7 +234,7 @@ fun EmberCard(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(DurenColors.SurfaceElevated),
+                        .background(LocalDurenColors.current.SurfaceElevated),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "🎭", fontSize = 14.sp)
@@ -260,7 +260,7 @@ fun EmberCard(
                     text = name,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = DurenColors.TextPrimary
+                    color = LocalDurenColors.current.TextPrimary
                 )
                 // Ember signature — the author's tagline, italic and quiet.
                 if (!ember.mode.isMasked && ember.emberSignature.isNotBlank()) {
@@ -268,14 +268,14 @@ fun EmberCard(
                         text = ember.emberSignature,
                         fontSize = 11.sp,
                         fontStyle = FontStyle.Italic,
-                        color = DurenColors.TextSecondary
+                        color = LocalDurenColors.current.TextSecondary
                     )
                 }
                 val tribeLine = ember.tribeName.trim().ifBlank { null }
                 Text(
                     text = if (tribeLine != null) "in $tribeLine" else "in the clearing",
                     fontSize = 11.sp,
-                    color = DurenColors.TextMuted
+                    color = LocalDurenColors.current.TextMuted
                 )
             }
 
@@ -298,7 +298,7 @@ fun EmberCard(
                     else ember.text,
                     fontSize = 16.sp,
                     lineHeight = 24.sp,
-                    color = DurenColors.TextPrimary
+                    color = LocalDurenColors.current.TextPrimary
                 )
                 if (fragmentHeld) {
                     Spacer(modifier = Modifier.height(DurenSpacing.space2))
@@ -306,7 +306,7 @@ fun EmberCard(
                         text = "🔒 Echo to read the rest",
                         fontSize = 13.sp,
                         fontStyle = FontStyle.Italic,
-                        color = DurenColors.AccentTeal
+                        color = LocalDurenColors.current.AccentTeal
                     )
                 }
             }
@@ -364,7 +364,7 @@ fun EmberCard(
                             .fillMaxWidth()
                             .height(2.dp)
                             .align(Alignment.BottomCenter)
-                            .background(DurenColors.AccentTeal.copy(alpha = 0.6f))
+                            .background(LocalDurenColors.current.AccentTeal.copy(alpha = 0.6f))
                     )
                 }
             }
@@ -395,7 +395,7 @@ fun EmberCard(
                         Text(
                             text = "🕯️ let it rest",
                             fontSize = 12.sp,
-                            color = DurenColors.TextMuted
+                            color = LocalDurenColors.current.TextMuted
                         )
                     } else Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -409,7 +409,7 @@ fun EmberCard(
                         Icon(
                             imageVector = if (ember.echoedByMe) Icons.Filled.Favorite else Icons.Outlined.Favorite,
                             contentDescription = if (ember.echoedByMe) "Un-echo" else "Echo",
-                            tint = if (ember.echoedByMe) DurenColors.AccentTeal else DurenColors.TextMuted,
+                            tint = if (ember.echoedByMe) LocalDurenColors.current.AccentTeal else LocalDurenColors.current.TextMuted,
                             modifier = Modifier
                                 .size(20.dp)
                                 .graphicsLayer { scaleX = heartScale.value; scaleY = heartScale.value }
@@ -418,7 +418,7 @@ fun EmberCard(
                         Text(
                             text = "${ember.echoCount} echoes",
                             fontSize = 12.sp,
-                            color = if (ember.echoedByMe) DurenColors.AccentTeal else DurenColors.TextMuted
+                            color = if (ember.echoedByMe) LocalDurenColors.current.AccentTeal else LocalDurenColors.current.TextMuted
                         )
                     }
 
@@ -436,7 +436,7 @@ fun EmberCard(
                         Text(
                             text = "${ember.whisperCount} whispers",
                             fontSize = 12.sp,
-                            color = DurenColors.TextMuted
+                            color = LocalDurenColors.current.TextMuted
                         )
                     }
                 }
@@ -450,7 +450,7 @@ fun EmberCard(
                             Icon(
                                 imageVector = Icons.Outlined.MoreVert,
                                 contentDescription = "More",
-                                tint = DurenColors.TextMuted,
+                                tint = LocalDurenColors.current.TextMuted,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -523,7 +523,7 @@ private fun BurningBar(
         modifier = modifier
             .height(2.dp)
             .clip(CircleShape)
-            .background(DurenColors.BorderDefault.copy(alpha = 0.4f))
+            .background(LocalDurenColors.current.BorderDefault.copy(alpha = 0.4f))
     ) {
         Box(
             modifier = Modifier
@@ -574,7 +574,7 @@ private fun PollSection(
             Text(
                 text = if (total == 1) "1 voice" else "$total voices",
                 fontSize = 11.sp,
-                color = DurenColors.TextMuted
+                color = LocalDurenColors.current.TextMuted
             )
         }
     }
@@ -586,24 +586,24 @@ private fun PollChoiceButton(label: String, onClick: () -> Unit, modifier: Modif
     Box(
         modifier = modifier
             .clip(CircleShape)
-            .background(DurenColors.SurfaceElevated)
+            .background(LocalDurenColors.current.SurfaceElevated)
             .clickable(onClick = onClick)
             .padding(vertical = DurenSpacing.space2),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DurenColors.TextSecondary)
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = LocalDurenColors.current.TextSecondary)
     }
 }
 
 /** A poll result: label, percentage, and a teal bar — brighter for the side you picked. */
 @Composable
 private fun PollResultRow(label: String, pct: Int, mine: Boolean) {
-    val fill = if (mine) DurenColors.AccentTeal else DurenColors.AccentTeal.copy(alpha = 0.3f)
+    val fill = if (mine) LocalDurenColors.current.AccentTeal else LocalDurenColors.current.AccentTeal.copy(alpha = 0.3f)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(DurenShapes.small)
-            .background(DurenColors.SurfaceElevated)
+            .background(LocalDurenColors.current.SurfaceElevated)
     ) {
         Box(
             modifier = Modifier
@@ -624,9 +624,9 @@ private fun PollResultRow(label: String, pct: Int, mine: Boolean) {
                 text = if (mine) "$label ●" else label,
                 fontSize = 13.sp,
                 fontWeight = if (mine) FontWeight.SemiBold else FontWeight.Normal,
-                color = DurenColors.TextPrimary
+                color = LocalDurenColors.current.TextPrimary
             )
-            Text(text = "$pct%", fontSize = 13.sp, color = DurenColors.TextSecondary)
+            Text(text = "$pct%", fontSize = 13.sp, color = LocalDurenColors.current.TextSecondary)
         }
     }
 }

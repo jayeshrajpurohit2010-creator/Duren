@@ -53,7 +53,7 @@ import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenIcon
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 import com.duren.app.ui.theme.VibePalette
@@ -97,26 +97,26 @@ fun TribesScreen(
     }
 
     Scaffold(
-        containerColor = DurenColors.BackgroundPrimary,
+        containerColor = LocalDurenColors.current.BackgroundPrimary,
         topBar = {
             TopAppBar(
                 title = { Text("Discover") },
                 actions = {
                     TextButton(onClick = { showCodeDialog = true }) {
-                        Text("Have a code?", color = DurenColors.AccentTeal, fontSize = 13.sp)
+                        Text("Have a code?", color = LocalDurenColors.current.AccentTeal, fontSize = 13.sp)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
-                    titleContentColor = DurenColors.TextPrimary
+                    titleContentColor = LocalDurenColors.current.TextPrimary
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onCreateTribe,
-                containerColor = DurenColors.AccentTeal,
-                contentColor = DurenColors.OnAccent
+                containerColor = LocalDurenColors.current.AccentTeal,
+                contentColor = LocalDurenColors.current.OnAccent
             ) {
                 DurenIcon(DurenIcon.Plus, size = 24.dp)
             }
@@ -231,7 +231,7 @@ private fun TribeTile(
             if (tribe.vibe.isNotBlank()) {
                 Text(
                     text = tribe.vibe,
-                    color = DurenColors.TextMuted,
+                    color = LocalDurenColors.current.TextMuted,
                     fontStyle = FontStyle.Italic,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
@@ -250,7 +250,7 @@ private fun TribeTile(
         ) {
             Text(
                 text = "${tribe.memberCount} souls",
-                color = DurenColors.TextSecondary,
+                color = LocalDurenColors.current.TextSecondary,
                 fontSize = 11.sp,
                 maxLines = 1
             )
@@ -265,13 +265,13 @@ private fun JoinPill(isMember: Boolean, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .clip(DurenShapes.pill)
-                .border(1.dp, DurenColors.TextMuted.copy(alpha = 0.5f), DurenShapes.pill)
+                .border(1.dp, LocalDurenColors.current.TextMuted.copy(alpha = 0.5f), DurenShapes.pill)
                 .clickable(onClick = onClick)
                 .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space1)
         ) {
             Text(
                 text = "Joined",
-                color = DurenColors.TextSecondary,
+                color = LocalDurenColors.current.TextSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -280,13 +280,13 @@ private fun JoinPill(isMember: Boolean, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .clip(DurenShapes.pill)
-                .background(DurenColors.AccentTeal)
+                .background(LocalDurenColors.current.AccentTeal)
                 .clickable(onClick = onClick)
                 .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space1)
         ) {
             Text(
                 text = "Join",
-                color = DurenColors.OnAccent,
+                color = LocalDurenColors.current.OnAccent,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -314,7 +314,7 @@ private fun JoinByCodeDialog(
                 Text(
                     text = "Six digits open the door to a campfire.",
                     fontSize = 13.sp,
-                    color = DurenColors.TextSecondary
+                    color = LocalDurenColors.current.TextSecondary
                 )
                 Spacer(Modifier.height(DurenSpacing.space3))
                 OutlinedTextField(
@@ -329,7 +329,7 @@ private fun JoinByCodeDialog(
                     Text(
                         text = state.message,
                         fontSize = 12.sp,
-                        color = DurenColors.SemanticError
+                        color = LocalDurenColors.current.SemanticError
                     )
                 }
             }
@@ -339,7 +339,7 @@ private fun JoinByCodeDialog(
                 CircularProgressIndicator(
                     modifier = Modifier.height(20.dp).aspectRatio(1f),
                     strokeWidth = 2.dp,
-                    color = DurenColors.AccentTeal
+                    color = LocalDurenColors.current.AccentTeal
                 )
             } else {
                 TextButton(

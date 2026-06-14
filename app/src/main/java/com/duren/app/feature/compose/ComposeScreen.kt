@@ -59,7 +59,7 @@ import com.duren.app.data.ember.model.PostMode
 import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.components.DurenIcon
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -129,10 +129,10 @@ fun ComposeScreen(
     val canPost = !isPosting && (bodyText.isNotBlank() || mediaUri != null) && (!poll || bodyText.isNotBlank())
 
     Scaffold(
-        containerColor = DurenColors.BackgroundPrimary,
+        containerColor = LocalDurenColors.current.BackgroundPrimary,
         topBar = {
             TopAppBar(
-                title = { Text("Compose", color = DurenColors.TextPrimary) },
+                title = { Text("Compose", color = LocalDurenColors.current.TextPrimary) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
@@ -161,7 +161,7 @@ fun ComposeScreen(
                 Text(
                     text = "Post to",
                     style = MaterialTheme.typography.labelMedium,
-                    color = DurenColors.TextMuted
+                    color = LocalDurenColors.current.TextMuted
                 )
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -195,7 +195,7 @@ fun ComposeScreen(
                     Text(
                         text = "Into",
                         style = MaterialTheme.typography.labelMedium,
-                        color = DurenColors.TextMuted
+                        color = LocalDurenColors.current.TextMuted
                     )
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -222,7 +222,7 @@ fun ComposeScreen(
                 Text(
                     text = "Post as",
                     style = MaterialTheme.typography.labelMedium,
-                    color = DurenColors.TextMuted
+                    color = LocalDurenColors.current.TextMuted
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)
@@ -243,7 +243,7 @@ fun ComposeScreen(
                     Text(
                         text = "Posted without your name or avatar.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = DurenColors.TextMuted
+                        color = LocalDurenColors.current.TextMuted
                     )
                 }
             }
@@ -273,14 +273,14 @@ fun ComposeScreen(
                     Text(
                         text = "Hidden past 100 characters until someone echoes to reveal the rest.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = DurenColors.TextMuted
+                        color = LocalDurenColors.current.TextMuted
                     )
                 }
                 if (poll) {
                     Text(
                         text = "A yes / no question. Everyone sees the split after they vote.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = DurenColors.TextMuted
+                        color = LocalDurenColors.current.TextMuted
                     )
                 }
             }
@@ -327,7 +327,7 @@ fun ComposeScreen(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(DurenSpacing.space2),
-                            containerColor = DurenColors.SurfaceElevated
+                            containerColor = LocalDurenColors.current.SurfaceElevated
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
@@ -348,13 +348,13 @@ fun ComposeScreen(
                     text = "FADES IN 48h",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = DurenColors.AccentTeal
+                    color = LocalDurenColors.current.AccentTeal
                 )
                 Text(
                     text = "Catches fire? Reaches 72h",
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,
-                    color = DurenColors.TextMuted,
+                    color = LocalDurenColors.current.TextMuted,
                     modifier = Modifier.padding(top = DurenSpacing.space2)
                 )
             }
@@ -380,10 +380,10 @@ fun ComposeScreen(
                 },
                 enabled = canPost,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = DurenColors.AccentTeal,
-                    contentColor = DurenColors.OnAccent,
-                    disabledContainerColor = DurenColors.SurfaceElevated,
-                    disabledContentColor = DurenColors.TextDisabled
+                    containerColor = LocalDurenColors.current.AccentTeal,
+                    contentColor = LocalDurenColors.current.OnAccent,
+                    disabledContainerColor = LocalDurenColors.current.SurfaceElevated,
+                    disabledContentColor = LocalDurenColors.current.TextDisabled
                 ),
                 shape = DurenShapes.pill,
                 modifier = Modifier
@@ -411,13 +411,13 @@ private fun PostAsPill(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(DurenShapes.pill)
-            .background(if (selected) DurenColors.AccentTeal else DurenColors.SurfaceElevated)
+            .background(if (selected) LocalDurenColors.current.AccentTeal else LocalDurenColors.current.SurfaceElevated)
             .clickable(onClick = onClick)
             .padding(horizontal = DurenSpacing.space4, vertical = DurenSpacing.space2)
     ) {
         Text(
             text = text,
-            color = if (selected) DurenColors.OnAccent else DurenColors.TextSecondary,
+            color = if (selected) LocalDurenColors.current.OnAccent else LocalDurenColors.current.TextSecondary,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             fontSize = 14.sp
         )

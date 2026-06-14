@@ -51,7 +51,7 @@ import com.duren.app.data.mood.model.Mood
 import com.duren.app.data.nest.model.NestRelation
 import com.duren.app.data.testimonial.model.Testimonial
 import com.duren.app.ui.components.DurenAvatar
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
@@ -172,11 +172,12 @@ fun PublicProfileScreen(
             item {
                 Spacer(Modifier.height(DurenSpacing.space4))
                 // Aura ring — tinted by their mood tonight if they share it (F12).
-                val auraColor = remember(theirMood, p?.showMoodCanvas) {
+                val accentTeal = LocalDurenColors.current.AccentTeal
+                val auraColor = remember(theirMood, p?.showMoodCanvas, accentTeal) {
                     val m = theirMood
                     if (p?.showMoodCanvas == true && m != null && m.isSet)
                         Color(android.graphics.Color.parseColor(Mood.hexFor(m.mood)))
-                    else DurenColors.AccentTeal
+                    else accentTeal
                 }
                 Box(
                     modifier = Modifier
@@ -228,7 +229,7 @@ fun PublicProfileScreen(
                         Text(
                             text = "✨ Mutual Spark — your fires answered each other",
                             style = MaterialTheme.typography.bodySmall,
-                            color = DurenColors.AccentTeal
+                            color = LocalDurenColors.current.AccentTeal
                         )
                     }
                 }

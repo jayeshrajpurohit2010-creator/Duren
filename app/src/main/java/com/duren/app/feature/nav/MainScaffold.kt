@@ -6,7 +6,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.graphics.Color
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -77,7 +77,7 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                 NavigationBar(
                     // Translucent dark, not solid black — the bar sits quietly over the
                     // darkness instead of fencing it off with a hard Material edge.
-                    containerColor = DurenColors.Glass,
+                    containerColor = LocalDurenColors.current.Glass,
                     tonalElevation = 0.dp
                 ) {
                     tabs.forEach { tab ->
@@ -96,10 +96,10 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                             // Teal where you are, near-invisible where you're not — and
                             // no Material "pill" highlight behind the active icon.
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = DurenColors.AccentTeal,
-                                selectedTextColor = DurenColors.AccentTeal,
-                                unselectedIconColor = DurenColors.TextDisabled,
-                                unselectedTextColor = DurenColors.TextDisabled,
+                                selectedIconColor = LocalDurenColors.current.AccentTeal,
+                                selectedTextColor = LocalDurenColors.current.AccentTeal,
+                                unselectedIconColor = LocalDurenColors.current.TextDisabled,
+                                unselectedTextColor = LocalDurenColors.current.TextDisabled,
                                 indicatorColor = Color.Transparent
                             )
                         )

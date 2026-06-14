@@ -71,7 +71,7 @@ import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.EmberCard
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 import com.duren.app.ui.theme.VibePalette
@@ -282,7 +282,7 @@ private fun TribeDetailHeader(
                     text = tribe.name,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = DurenColors.TextPrimary,
+                    color = LocalDurenColors.current.TextPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 // See The Fire — the flame grows with the last half hour of embers.
@@ -295,7 +295,7 @@ private fun TribeDetailHeader(
                     text = tribe.vibe,
                     style = MaterialTheme.typography.bodySmall,
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                    color = DurenColors.AccentTeal
+                    color = LocalDurenColors.current.AccentTeal
                 )
             }
 
@@ -324,7 +324,7 @@ private fun TribeDetailHeader(
                 Text(
                     text = "🔑 You keep this fire",
                     style = MaterialTheme.typography.labelSmall,
-                    color = DurenColors.AccentTeal
+                    color = LocalDurenColors.current.AccentTeal
                 )
             }
 
@@ -335,7 +335,7 @@ private fun TribeDetailHeader(
                 Text(
                     text = "🎟 Invite code ${tribe.inviteCode} · tap to copy",
                     style = MaterialTheme.typography.labelSmall,
-                    color = DurenColors.TextSecondary,
+                    color = LocalDurenColors.current.TextSecondary,
                     modifier = Modifier.clickable {
                         clipboard.setText(AnnotatedString(tribe.inviteCode))
                     }
@@ -417,7 +417,7 @@ private fun QuestionOfNightCard() {
         modifier = Modifier
             .fillMaxWidth()
             .clip(DurenShapes.large)
-            .background(DurenColors.SurfacePrimary)
+            .background(LocalDurenColors.current.SurfacePrimary)
             .padding(DurenSpacing.space4)
     ) {
         Text(
@@ -425,13 +425,13 @@ private fun QuestionOfNightCard() {
             fontSize = 11.sp,
             letterSpacing = 1.5.sp,
             fontWeight = FontWeight.Medium,
-            color = DurenColors.AccentTeal
+            color = LocalDurenColors.current.AccentTeal
         )
         Spacer(Modifier.height(DurenSpacing.space2))
         Text(
             text = prompt,
             fontSize = 16.sp,
-            color = DurenColors.TextPrimary
+            color = LocalDurenColors.current.TextPrimary
         )
     }
 }
@@ -477,13 +477,13 @@ private fun TopicChip(label: String, selected: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .clip(DurenShapes.pill)
             .background(
-                if (selected) DurenColors.AccentTeal.copy(alpha = 0.18f)
-                else DurenColors.SurfacePrimary
+                if (selected) LocalDurenColors.current.AccentTeal.copy(alpha = 0.18f)
+                else LocalDurenColors.current.SurfacePrimary
             )
             .border(
                 1.dp,
-                if (selected) DurenColors.AccentTeal.copy(alpha = 0.6f)
-                else DurenColors.BorderDefault,
+                if (selected) LocalDurenColors.current.AccentTeal.copy(alpha = 0.6f)
+                else LocalDurenColors.current.BorderDefault,
                 DurenShapes.pill
             )
             .clickable { onClick() }
@@ -492,7 +492,7 @@ private fun TopicChip(label: String, selected: Boolean, onClick: () -> Unit) {
         Text(
             text = label,
             fontSize = 12.sp,
-            color = if (selected) DurenColors.AccentTeal else DurenColors.TextSecondary
+            color = if (selected) LocalDurenColors.current.AccentTeal else LocalDurenColors.current.TextSecondary
         )
     }
 }
@@ -512,7 +512,7 @@ private fun NewTopicDialog(
                 Text(
                     text = "A named thread inside this tribe — like #episode-drops or #midnight-music.",
                     fontSize = 13.sp,
-                    color = DurenColors.TextSecondary
+                    color = LocalDurenColors.current.TextSecondary
                 )
                 Spacer(Modifier.height(DurenSpacing.space3))
                 OutlinedTextField(
@@ -562,14 +562,14 @@ private fun PresenceBeacon(count: Int) {
                 .size(8.dp)
                 .alpha(glow)
                 .clip(CircleShape)
-                .background(DurenColors.AccentTeal)
+                .background(LocalDurenColors.current.AccentTeal)
         )
         Spacer(Modifier.width(DurenSpacing.space2))
         Text(
             text = if (count == 1) "Someone's around the fire right now"
             else "$count around the fire right now",
             fontSize = 13.sp,
-            color = DurenColors.AccentTeal
+            color = LocalDurenColors.current.AccentTeal
         )
     }
 }
@@ -594,7 +594,7 @@ private fun BulletinBoard(
             fontSize = 11.sp,
             letterSpacing = 1.5.sp,
             fontWeight = FontWeight.Medium,
-            color = DurenColors.TextSecondary
+            color = LocalDurenColors.current.TextSecondary
         )
         Spacer(Modifier.height(DurenSpacing.space2))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
@@ -634,7 +634,7 @@ private fun BulletinCard(
         modifier = Modifier
             .width(220.dp)
             .clip(DurenShapes.large)
-            .background(DurenColors.SurfaceElevated)
+            .background(LocalDurenColors.current.SurfaceElevated)
             .padding(DurenSpacing.space3)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -644,7 +644,7 @@ private fun BulletinCard(
                 text = bulletin.title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = DurenColors.TextPrimary,
+                color = LocalDurenColors.current.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -653,7 +653,7 @@ private fun BulletinCard(
                 Text(
                     text = "✕",
                     fontSize = 14.sp,
-                    color = DurenColors.TextSecondary,
+                    color = LocalDurenColors.current.TextSecondary,
                     modifier = Modifier.clickable { onDelete() }
                 )
             }
@@ -663,7 +663,7 @@ private fun BulletinCard(
             Text(
                 text = bulletin.text,
                 fontSize = 13.sp,
-                color = DurenColors.TextSecondary,
+                color = LocalDurenColors.current.TextSecondary,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
@@ -678,7 +678,7 @@ private fun AddBulletinTile(onClick: () -> Unit) {
             .width(120.dp)
             .height(96.dp)
             .clip(DurenShapes.large)
-            .background(DurenColors.SurfacePrimary)
+            .background(LocalDurenColors.current.SurfacePrimary)
             .clickable { onClick() }
             .padding(DurenSpacing.space3),
         verticalArrangement = Arrangement.Center,
@@ -689,7 +689,7 @@ private fun AddBulletinTile(onClick: () -> Unit) {
         Text(
             text = "Pin a notice",
             fontSize = 12.sp,
-            color = DurenColors.AccentTeal
+            color = LocalDurenColors.current.AccentTeal
         )
     }
 }

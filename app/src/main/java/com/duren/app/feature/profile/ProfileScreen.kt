@@ -48,7 +48,7 @@ import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.EmberCard
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -70,7 +70,7 @@ fun ProfileScreen(
     val myHearth by viewModel.myHearth.collectAsStateWithLifecycle()
     val myTestimonials by viewModel.myTestimonials.collectAsStateWithLifecycle()
 
-    Scaffold(containerColor = DurenColors.BackgroundPrimary) { padding ->
+    Scaffold(containerColor = LocalDurenColors.current.BackgroundPrimary) { padding ->
         val p = profile
         LazyColumn(
             modifier = Modifier
@@ -96,11 +96,12 @@ fun ProfileScreen(
                         Spacer(Modifier.height(DurenSpacing.space8))
                         // Presence aura — a soft ring around the avatar. Tinted by
                         // tonight's Mood Canvas when shown, otherwise teal (F12).
-                        val auraColor = remember(myMood, p.showMoodCanvas) {
+                        val accentTeal = LocalDurenColors.current.AccentTeal
+                        val auraColor = remember(myMood, p.showMoodCanvas, accentTeal) {
                             val m = myMood
                             if (p.showMoodCanvas && m != null && m.isSet)
                                 Color(android.graphics.Color.parseColor(Mood.hexFor(m.mood)))
-                            else DurenColors.AccentTeal
+                            else accentTeal
                         }
                         Box(
                             modifier = Modifier
@@ -121,15 +122,15 @@ fun ProfileScreen(
                             text = p.displayName.ifBlank { p.username },
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DurenColors.TextPrimary
+                            color = LocalDurenColors.current.TextPrimary
                         )
                         Text(
                             text = "@${p.username}",
                             fontSize = 14.sp,
-                            color = DurenColors.TextSecondary
+                            color = LocalDurenColors.current.TextSecondary
                         )
                         if (p.pronouns.isNotBlank()) {
-                            Text(text = p.pronouns, fontSize = 12.sp, color = DurenColors.TextMuted)
+                            Text(text = p.pronouns, fontSize = 12.sp, color = LocalDurenColors.current.TextMuted)
                         }
                         // Ember signature — the tagline that rides under your name everywhere.
                         if (p.signature.isNotBlank()) {
@@ -138,7 +139,7 @@ fun ProfileScreen(
                                 text = p.signature,
                                 fontSize = 13.sp,
                                 fontStyle = FontStyle.Italic,
-                                color = DurenColors.AccentTeal,
+                                color = LocalDurenColors.current.AccentTeal,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -147,7 +148,7 @@ fun ProfileScreen(
                             Text(
                                 text = p.bio,
                                 fontSize = 14.sp,
-                                color = DurenColors.TextSecondary,
+                                color = LocalDurenColors.current.TextSecondary,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -165,8 +166,8 @@ fun ProfileScreen(
                         Button(
                             onClick = onOpenNest,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = DurenColors.AccentTeal,
-                                contentColor = DurenColors.OnAccent
+                                containerColor = LocalDurenColors.current.AccentTeal,
+                                contentColor = LocalDurenColors.current.OnAccent
                             ),
                             shape = DurenShapes.pill,
                             modifier = Modifier.fillMaxWidth().height(52.dp)
@@ -198,7 +199,7 @@ fun ProfileScreen(
                             shape = DurenShapes.pill,
                             modifier = Modifier.fillMaxWidth().height(52.dp)
                         ) {
-                            Text("Sign out", color = DurenColors.TextSecondary)
+                            Text("Sign out", color = LocalDurenColors.current.TextSecondary)
                         }
                     }
                 }
@@ -211,7 +212,7 @@ fun ProfileScreen(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 1.5.sp,
-                        color = DurenColors.TextMuted,
+                        color = LocalDurenColors.current.TextMuted,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = DurenSpacing.space6)
@@ -221,7 +222,7 @@ fun ProfileScreen(
                         Text(
                             text = "No one's warmed your hearth tonight.",
                             fontSize = 14.sp,
-                            color = DurenColors.TextMuted,
+                            color = LocalDurenColors.current.TextMuted,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = DurenSpacing.space6)
@@ -237,19 +238,19 @@ fun ProfileScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(DurenShapes.large)
-                                        .background(DurenColors.SurfacePrimary)
+                                        .background(LocalDurenColors.current.SurfacePrimary)
                                         .padding(DurenSpacing.space3)
                                 ) {
                                     Text(
                                         text = h.text,
                                         fontSize = 14.sp,
-                                        color = DurenColors.TextPrimary
+                                        color = LocalDurenColors.current.TextPrimary
                                     )
                                     Spacer(Modifier.height(DurenSpacing.space1))
                                     Text(
                                         text = "🔥 ${h.senderName.ifBlank { "A soul" }} warmed your hearth",
                                         fontSize = 11.sp,
-                                        color = DurenColors.TextMuted
+                                        color = LocalDurenColors.current.TextMuted
                                     )
                                 }
                                 Spacer(Modifier.height(DurenSpacing.space2))
@@ -267,7 +268,7 @@ fun ProfileScreen(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             letterSpacing = 1.5.sp,
-                            color = DurenColors.TextMuted,
+                            color = LocalDurenColors.current.TextMuted,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = DurenSpacing.space6)
@@ -297,7 +298,7 @@ fun ProfileScreen(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 1.5.sp,
-                        color = DurenColors.TextMuted,
+                        color = LocalDurenColors.current.TextMuted,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = DurenSpacing.space6)
@@ -310,7 +311,7 @@ fun ProfileScreen(
                         Text(
                             text = "You haven't lit an ember yet.",
                             fontSize = 14.sp,
-                            color = DurenColors.TextMuted,
+                            color = LocalDurenColors.current.TextMuted,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = DurenSpacing.space6)
@@ -351,7 +352,7 @@ private fun PresenceControls(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Mood Canvas — five dots, tonight's choice ringed.
-        Text(text = "How's tonight?", fontSize = 12.sp, color = DurenColors.TextMuted)
+        Text(text = "How's tonight?", fontSize = 12.sp, color = LocalDurenColors.current.TextMuted)
         Spacer(Modifier.height(DurenSpacing.space2))
         Row(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space3)) {
             (1..5).forEach { m ->
@@ -362,7 +363,7 @@ private fun PresenceControls(
                         .size(34.dp)
                         .clip(CircleShape)
                         .then(
-                            if (selected) Modifier.border(2.dp, DurenColors.TextPrimary, CircleShape)
+                            if (selected) Modifier.border(2.dp, LocalDurenColors.current.TextPrimary, CircleShape)
                             else Modifier
                         )
                         .clickable { onSetMood(m) },
@@ -379,7 +380,7 @@ private fun PresenceControls(
         }
         if (mood?.isSet == true) {
             Spacer(Modifier.height(DurenSpacing.space1))
-            Text(text = Mood.labelFor(mood.mood), fontSize = 11.sp, color = DurenColors.TextSecondary)
+            Text(text = Mood.labelFor(mood.mood), fontSize = 11.sp, color = LocalDurenColors.current.TextSecondary)
         }
 
         Spacer(Modifier.height(DurenSpacing.space5))
@@ -390,10 +391,10 @@ private fun PresenceControls(
                 Text(
                     text = "💤 ${profile.bankedStatus}",
                     fontSize = 13.sp,
-                    color = DurenColors.TextSecondary
+                    color = LocalDurenColors.current.TextSecondary
                 )
                 TextButton(onClick = onClearBanked) {
-                    Text("I'm back", color = DurenColors.AccentTeal)
+                    Text("I'm back", color = LocalDurenColors.current.AccentTeal)
                 }
             }
         } else {
@@ -410,7 +411,7 @@ private fun PresenceControls(
                 Spacer(Modifier.height(DurenSpacing.space2))
                 Row(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
                     TextButton(onClick = { editing = false }) {
-                        Text("Cancel", color = DurenColors.TextMuted)
+                        Text("Cancel", color = LocalDurenColors.current.TextMuted)
                     }
                     TextButton(onClick = {
                         if (note.isNotBlank()) {
@@ -418,12 +419,12 @@ private fun PresenceControls(
                             editing = false
                         }
                     }) {
-                        Text("Set", color = DurenColors.AccentTeal)
+                        Text("Set", color = LocalDurenColors.current.AccentTeal)
                     }
                 }
             } else {
                 TextButton(onClick = { editing = true }) {
-                    Text("Set an away note", color = DurenColors.TextMuted)
+                    Text("Set an away note", color = LocalDurenColors.current.TextMuted)
                 }
             }
         }
