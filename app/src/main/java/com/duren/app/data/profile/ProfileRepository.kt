@@ -39,6 +39,8 @@ class ProfileRepository @Inject constructor(
                             showMoodCanvas = data["showMoodCanvas"] as? Boolean ?: false,
                             allowAnonBox = data["allowAnonBox"] as? Boolean ?: true,
                             showTestimonials = data["showTestimonials"] as? Boolean ?: false,
+                            // Absent → true: grandfather pre-onboarding accounts past the flow.
+                            hasOnboarded = data["hasOnboarded"] as? Boolean ?: true,
                             bankedStatus = data["bankedStatus"] as? String ?: "",
                             bankedUntil = data["bankedUntil"] as? Timestamp
                         )

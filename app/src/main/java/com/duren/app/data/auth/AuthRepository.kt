@@ -94,7 +94,9 @@ class AuthRepository @Inject constructor(
                             "showLantern" to true,
                             "showMoodCanvas" to false,
                             "allowAnonBox" to true,
-                            "showTestimonials" to false
+                            "showTestimonials" to false,
+                            // New souls start at "Find your fire" before the Clearing.
+                            "hasOnboarded" to false
                         )
                     )
                     batch.set(usernameRef, mapOf("uid" to user.uid))

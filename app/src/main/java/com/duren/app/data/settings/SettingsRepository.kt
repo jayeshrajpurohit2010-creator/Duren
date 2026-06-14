@@ -47,6 +47,9 @@ class SettingsRepository @Inject constructor(
     suspend fun updateAllowAnonBox(value: Boolean): Result<Unit> = update("allowAnonBox" to value)
     suspend fun updateShowTestimonials(value: Boolean): Result<Unit> = update("showTestimonials" to value)
 
+    /** Mark the "Find your fire" first-run flow done, so it never shows again. */
+    suspend fun markOnboarded(): Result<Unit> = update("hasOnboarded" to true)
+
     suspend fun updateAccount(
         displayName: String,
         bio: String,
