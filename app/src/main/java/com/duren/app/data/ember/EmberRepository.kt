@@ -466,6 +466,7 @@ class EmberRepository @Inject constructor(
                         authorAvatarColor = doc.getString("authorAvatarColor") ?: "#FF6B35",
                         text = doc.getString("text") ?: "",
                         isAnonymous = doc.getBoolean("isAnonymous") == true,
+                        parentWhisperId = doc.getString("parentWhisperId"),
                         createdAt = doc.getTimestamp("createdAt")
                     )
                 } ?: emptyList()
@@ -474,32 +475,50 @@ class EmberRepository @Inject constructor(
         awaitClose { reg.remove() }
     }
 
-    /** Add a whisper to an ember and bump its whisperCount. */
-    suspend fun addWhisper(emberId: String, text: String, isAnonymous: Boolean): Result<Unit> {
+    /**
+     * Add a whisper to an ember and bump its whisperCount. [parentWhisperId] threads
+     * this as a reply under another whisper; null is a top-level whisper.
+     *
+     * Anonymity is enforced HERE, not only in the UI: a whisper on a Confess ember is
+     * always faceless no matter what the caller asked for, so a reply to a confession
+     * can never leak the replier's real name (the trust bug this fixes). The identity
+     * fields are blanked on the document, the same way masked embers hide their author.
+     */
+    suspend fun addWhisper(
+        emberId: String,
+        text: String,
+        isAnonymous: Boolean,
+        parentWhisperId: String? = null
+    ): Result<Unit> {
         val user = auth.currentUser ?: return Result.failure(DomainError.NotAuthenticated)
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return Result.failure(DomainError.EmptyEmber)
         return try {
-            val profileSnap = firestore.collection(PROFILES).document(user.uid).get().await()
             val emberRef = firestore.collection(EMBERS).document(emberId)
+            val emberSnap = emberRef.get().await()
+            // A confession is a safe room — force every whisper on it anonymous.
+            val confessParent = PostMode.fromWire(emberSnap.getString("mode")) == PostMode.Confess
+            val anon = isAnonymous || confessParent
+            val profileSnap = firestore.collection(PROFILES).document(user.uid).get().await()
             emberRef.collection(WHISPERS).document().set(
                 mapOf(
                     "authorId" to user.uid,
-                    "authorName" to if (isAnonymous) "" else (profileSnap.getString("displayName") ?: ""),
-                    "authorUsername" to if (isAnonymous) "" else (profileSnap.getString("username") ?: ""),
-                    "authorAvatarUrl" to if (isAnonymous) "" else (profileSnap.getString("avatarUrl") ?: ""),
-                    "authorAvatarColor" to if (isAnonymous) "#FF6B35" else (profileSnap.getString("avatarColor") ?: "#FF6B35"),
+                    "authorName" to if (anon) "" else (profileSnap.getString("displayName") ?: ""),
+                    "authorUsername" to if (anon) "" else (profileSnap.getString("username") ?: ""),
+                    "authorAvatarUrl" to if (anon) "" else (profileSnap.getString("avatarUrl") ?: ""),
+                    "authorAvatarColor" to if (anon) "#FF6B35" else (profileSnap.getString("avatarColor") ?: "#FF6B35"),
                     "text" to trimmed.take(500),
-                    "isAnonymous" to isAnonymous,
+                    "isAnonymous" to anon,
+                    "parentWhisperId" to parentWhisperId,
                     "createdAt" to FieldValue.serverTimestamp()
                 )
             ).await()
             emberRef.update("whisperCount", FieldValue.increment(1)).await()
-            // Notify the author — but NOT for anonymous whispers: the Signal would
-            // carry the whisperer's uid and quietly unmask them.
-            if (!isAnonymous) {
+            // Notify the ember's author — never for anonymous whispers: the Signal
+            // carries the whisperer's uid and would quietly unmask them.
+            if (!anon) {
                 runCatching {
-                    val authorId = emberRef.get().await().getString("authorId")
+                    val authorId = emberSnap.getString("authorId")
                     if (authorId != null) {
                         // No preview text: the whisper lives on the ember (which
                         // expires); the non-expiring Signal must not keep a copy.

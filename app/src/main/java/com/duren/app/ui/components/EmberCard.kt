@@ -502,6 +502,8 @@ fun EmberCard(
         if (showWhispers) {
             WhisperThread(
                 emberId = ember.id,
+                // A confession keeps its room faceless: every whisper here is anonymous.
+                forceAnonymous = ember.mode == PostMode.Confess,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = contentPadding, vertical = DurenSpacing.space2)
