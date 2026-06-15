@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.Ember
+import com.duren.app.data.nest.NestRepository
 import com.duren.app.data.signal.SignalRepository
+import com.duren.app.data.tribe.TribeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -47,6 +49,8 @@ enum class FeedTab(val label: String) {
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val emberRepository: EmberRepository,
+    private val tribeRepository: TribeRepository,
+    private val nestRepository: NestRepository,
     signalRepository: SignalRepository
 ) : ViewModel() {
 
@@ -82,10 +86,24 @@ class FeedViewModel @Inject constructor(
     val currentUserId: String? get() = emberRepository.currentUserId
 
     /**
-     * Hot flow of hydrated ember lists — [Ember.echoedByMe] resolved in parallel
-     * (off the main thread, in this coroutine) for every incoming snapshot.
+     * The user's affinity graph — tribes they've joined and the people in their Nest.
+     * Embers from either get boosted up [rankByHeat], so joining a tribe actually
+     * changes the home feed. Emits promptly (empty sets when you've joined nothing), so
+     * the feed never waits on it — and the global feed still flows underneath, so a fresh
+     * account staring at the Clearing is never empty.
      */
-    private val hydratedList: Flow<List<Ember>> = limit
+    private val affinity: Flow<Affinity> = combine(
+        tribeRepository.observeMyTribeIds(),
+        nestRepository.observeMemberIds()
+    ) { tribeIds, nestIds -> Affinity(tribeIds, nestIds.toSet()) }
+
+    /**
+     * Echo-hydrated feed snapshots, unranked. [Ember.echoedByMe] is resolved in parallel
+     * (off the main thread, in this coroutine) per snapshot. Hydration is the costly
+     * part, so it stays keyed only on [limit]; an affinity change re-ranks the same
+     * snapshot without re-hydrating it.
+     */
+    private val hydratedRaw: Flow<List<Ember>> = limit
         .flatMapLatest { currentLimit ->
             flow {
                 emberRepository.observeFeed(currentLimit).collect { rawEmbers ->
@@ -94,12 +112,18 @@ class FeedViewModel @Inject constructor(
                             async { ember.copy(echoedByMe = emberRepository.hasEchoed(ember.id)) }
                         }.map { it.await() }
                     }
-                    // Rank by heat at snapshot time (stable between snapshots so the
-                    // list doesn't reshuffle under the user on every echo tap).
-                    emit(rankByHeat(hydrated))
+                    emit(hydrated)
                 }
             }
         }
+
+    /**
+     * The hydrated feed, heat-ranked with the affinity boost folded in. Ranked at
+     * snapshot time (stable between snapshots so an echo tap never reshuffles the list
+     * under the user's finger).
+     */
+    private val hydratedList: Flow<List<Ember>> =
+        combine(hydratedRaw, affinity) { hydrated, aff -> rankByHeat(hydrated, aff) }
 
     /**
      * The single source of truth for the feed UI.
@@ -166,19 +190,32 @@ class FeedViewModel @Inject constructor(
      * scoring layer, runnable without Cloud Functions. Order embers by engagement
      * lifted by recency and damped by age (classic gravity decay), so a fresh post
      * still surfaces while a post that's "catching fire" outranks an older quiet one.
-     * Cold marks subtract from heat (light anti-gaming). The full 7-layer,
-     * personalized, server-side system replaces this in Phase 4.
+     * Cold marks subtract from heat (light anti-gaming). Embers from a tribe you've
+     * joined or someone in your Nest get an [AFFINITY_BOOST] multiplier — the
+     * personalization layer, done client-side. The full 7-layer, server-side system
+     * replaces this in Phase 4.
      *
      *   heat = (echoes − coldMarks, floored at 0, +1) / (ageHours + 2) ^ GRAVITY
+     *          × (affinity ? BOOST : 1)
      */
-    private fun rankByHeat(embers: List<Ember>): List<Ember> {
+    private fun rankByHeat(embers: List<Ember>, affinity: Affinity): List<Ember> {
         val now = System.currentTimeMillis()
         return embers.sortedByDescending { ember ->
             val createdMs = ember.createdAt?.toDate()?.time ?: now
             val ageHours = (now - createdMs).coerceAtLeast(0L) / 3_600_000.0
             val engagement = (ember.echoCount - ember.coldMarkCount).coerceAtLeast(0) + 1
-            engagement.toDouble() / Math.pow(ageHours + 2.0, HEAT_GRAVITY)
+            val base = engagement.toDouble() / Math.pow(ageHours + 2.0, HEAT_GRAVITY)
+            // Your people punch above strangers: an ember from a tribe you've joined or
+            // someone in your Nest rides higher — but a truly blazing stranger ember can
+            // still break through, so the Clearing feels like yours without going blind.
+            if (affinity.covers(ember)) base * AFFINITY_BOOST else base
         }
+    }
+
+    /** A snapshot of what the user follows — joined tribes + Nest — for the feed boost. */
+    private data class Affinity(val tribeIds: Set<String>, val nestIds: Set<String>) {
+        fun covers(ember: Ember): Boolean =
+            (ember.tribeId != null && ember.tribeId in tribeIds) || ember.authorId in nestIds
     }
 
     /** Increase the Firestore limit to fetch the next page of embers. */
@@ -247,5 +284,9 @@ class FeedViewModel @Inject constructor(
     private companion object {
         // Higher = recency wins harder over raw echo count. 1.5 ≈ Hacker-News gravity.
         const val HEAT_GRAVITY = 1.5
+
+        // Heat multiplier for embers from your tribes / Nest. ~4× lifts your people well
+        // above strangers while still letting a smoking-hot stranger ember break through.
+        const val AFFINITY_BOOST = 4.0
     }
 }

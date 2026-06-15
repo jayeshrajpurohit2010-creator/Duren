@@ -421,7 +421,13 @@ class TribeRepository @Inject constructor(
         awaitClose { reg.remove() }
     }
 
-    private fun observeMyTribeIds(): Flow<Set<String>> = callbackFlow {
+    /**
+     * The ids of tribes the signed-in user has joined, as a lightweight set (membership
+     * docs only, no tribe-doc reads). Emits an empty set when signed out or not in any
+     * tribe, so a caller combining it never stalls. The feed uses this to boost embers
+     * from your tribes up the ranking.
+     */
+    fun observeMyTribeIds(): Flow<Set<String>> = callbackFlow {
         val uid = auth.currentUser?.uid
         if (uid == null) {
             trySend(emptySet())
