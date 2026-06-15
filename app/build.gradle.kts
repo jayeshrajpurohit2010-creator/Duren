@@ -17,8 +17,8 @@ android {
         applicationId = "com.duren"
         minSdk = 24
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.0.4-yourfire"
+        versionCode = 17
+        versionName = "1.0.5-firelight"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
