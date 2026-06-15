@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,22 +50,18 @@ fun DurenLogo(
     )
     val glowAlpha = if (animated) breathe else 1f
 
-    Canvas(modifier = modifier.size(size)) {
-        drawEmberMark(glowAlpha)
+    Box(modifier = modifier.size(size)) {
+        // The breathing glow is the only layer that animates — keep it on its own Canvas
+        // so the faceted shard (static) is drawn once instead of rebuilt every frame.
+        Canvas(Modifier.matchParentSize()) { drawEmberGlow(glowAlpha) }
+        Canvas(Modifier.matchParentSize()) { drawEmberShard() }
     }
 }
 
-private fun DrawScope.drawEmberMark(glowAlpha: Float) {
-    // Everything below is in the export's 48×48 coordinate space, scaled to fit.
+/** The warm radial glow behind the shard — the one part that breathes. */
+private fun DrawScope.drawEmberGlow(glowAlpha: Float) {
     val k = this.size.minDimension / 48f
     fun p(x: Float, y: Float) = Offset(x * k, y * k)
-    fun shard(points: List<Pair<Float, Float>>): Path = Path().apply {
-        moveTo(points[0].first * k, points[0].second * k)
-        points.drop(1).forEach { lineTo(it.first * k, it.second * k) }
-        close()
-    }
-
-    // Warm radial glow behind the shard.
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(EmberAmber.copy(alpha = 0.55f * glowAlpha), Color.Transparent),
@@ -74,6 +71,17 @@ private fun DrawScope.drawEmberMark(glowAlpha: Float) {
         radius = 23f * k,
         center = p(24f, 25f)
     )
+}
+
+/** The faceted crystal shard — static, so it draws once. Export's 48×48 space, scaled. */
+private fun DrawScope.drawEmberShard() {
+    val k = this.size.minDimension / 48f
+    fun p(x: Float, y: Float) = Offset(x * k, y * k)
+    fun shard(points: List<Pair<Float, Float>>): Path = Path().apply {
+        moveTo(points[0].first * k, points[0].second * k)
+        points.drop(1).forEach { lineTo(it.first * k, it.second * k) }
+        close()
+    }
 
     // Main shard silhouette.
     val body = shard(listOf(24f to 2f, 34f to 12f, 39f to 27f, 31f to 41f, 18f to 44f, 8f to 33f, 11f to 16f))

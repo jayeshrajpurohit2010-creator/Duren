@@ -11,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
@@ -70,16 +69,13 @@ fun FloatingEmbers(
 
             val r = e.radiusDp.dp.toPx()
             val center = Offset(x, y)
-            // Soft halo + bright core.
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(EmberGlow.copy(alpha = alpha), EmberGlow.copy(alpha = 0f)),
-                    center = center,
-                    radius = r * 3.2f
-                ),
-                radius = r * 3.2f,
-                center = center
-            )
+            // Soft halo + bright core. Stacked translucent discs instead of a per-mote
+            // radialGradient: allocating a gradient shader for every ember every frame was
+            // the landing-screen jank. A plain drawCircle is a cheap fill — three of them
+            // fake the falloff for far less cost.
+            drawCircle(color = EmberGlow.copy(alpha = alpha * 0.10f), radius = r * 3.2f, center = center)
+            drawCircle(color = EmberGlow.copy(alpha = alpha * 0.16f), radius = r * 2.2f, center = center)
+            drawCircle(color = EmberGlow.copy(alpha = alpha * 0.28f), radius = r * 1.5f, center = center)
             drawCircle(color = EmberCore.copy(alpha = alpha), radius = r, center = center)
         }
     }
