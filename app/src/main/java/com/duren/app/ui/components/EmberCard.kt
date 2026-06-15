@@ -52,10 +52,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.graphics.BitmapFactory
-import android.util.Base64
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import coil3.compose.AsyncImage
 import com.duren.app.data.ember.model.Ember
 import com.duren.app.data.ember.model.PostMode
@@ -632,17 +628,4 @@ private fun PollResultRow(label: String, pct: Int, mine: Boolean) {
             Text(text = "$pct%", fontSize = 13.sp, color = LocalDurenColors.current.TextSecondary)
         }
     }
-}
-
-/** Decode a `data:image/...;base64,…` URI into an [ImageBitmap], or null if malformed. */
-private fun decodeDataUri(dataUri: String): ImageBitmap? = try {
-    val base64 = dataUri.substringAfter("base64,", "")
-    if (base64.isBlank()) {
-        null
-    } else {
-        val bytes = Base64.decode(base64, Base64.DEFAULT)
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-    }
-} catch (_: Exception) {
-    null
 }

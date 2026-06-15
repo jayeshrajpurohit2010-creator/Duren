@@ -1,7 +1,5 @@
 package com.duren.app.ui.components
 
-import android.graphics.BitmapFactory
-import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -12,8 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -78,17 +74,4 @@ fun ProfileBanner(
             )
         }
     }
-}
-
-/** Decode a `data:image/...;base64,…` URI into an [ImageBitmap], or null if malformed. */
-private fun decodeDataUri(dataUri: String): ImageBitmap? = try {
-    val base64 = dataUri.substringAfter("base64,", "")
-    if (base64.isBlank()) {
-        null
-    } else {
-        val bytes = Base64.decode(base64, Base64.DEFAULT)
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-    }
-} catch (_: Exception) {
-    null
 }
