@@ -47,6 +47,21 @@ class SettingsViewModel @Inject constructor(
         _avatarUploading.value = false
     }
 
+    /** True while a picked cover photo is being compressed + saved. */
+    private val _bannerUploading = MutableStateFlow(false)
+    val bannerUploading: StateFlow<Boolean> = _bannerUploading.asStateFlow()
+
+    /** Compress the picked photo to a wide data URI and save it as the cover. */
+    fun setBannerPhoto(uri: Uri) = viewModelScope.launch {
+        _bannerUploading.value = true
+        mediaUploadRepository.uploadBanner(uri)
+            .onSuccess { dataUri -> settingsRepository.updateBannerUrl(dataUri) }
+        _bannerUploading.value = false
+    }
+
+    /** Take the cover photo back down. */
+    fun removeBanner() = viewModelScope.launch { settingsRepository.clearBanner() }
+
     fun setAccent(hex: String) = viewModelScope.launch {
         settingsRepository.updateAccentColor(hex)
     }

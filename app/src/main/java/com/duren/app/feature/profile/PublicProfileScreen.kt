@@ -53,6 +53,7 @@ import com.duren.app.data.testimonial.model.Testimonial
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.components.EmberCard
+import com.duren.app.ui.components.ProfileBanner
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
@@ -165,138 +166,148 @@ fun PublicProfileScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = DurenSpacing.space4),
+                .padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (p?.bannerUrl?.isNotBlank() == true) {
+                item { ProfileBanner(bannerUrl = p?.bannerUrl, height = 160.dp) }
+            }
             item {
-                Spacer(Modifier.height(DurenSpacing.space4))
-                // Aura ring — tinted by their mood tonight if they share it (F12).
-                val accentTeal = LocalDurenColors.current.AccentTeal
-                val auraColor = remember(theirMood, p?.showMoodCanvas, accentTeal) {
-                    val m = theirMood
-                    if (p?.showMoodCanvas == true && m != null && m.isSet)
-                        Color(android.graphics.Color.parseColor(Mood.hexFor(m.mood)))
-                    else accentTeal
-                }
-                Box(
+                Column(
                     modifier = Modifier
-                        .size(104.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, auraColor.copy(alpha = 0.5f), CircleShape),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(horizontal = DurenSpacing.space4),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    DurenAvatar(
-                        avatarUrl = p?.avatarUrl,
-                        fallbackColorHex = p?.avatarColor ?: "#FF6B35",
-                        size = 88.dp,
-                        contentDescription = "Avatar"
-                    )
-                }
-                Spacer(Modifier.height(DurenSpacing.space3))
-                Text(
-                    text = p?.displayName?.ifBlank { p.username } ?: "…",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (p != null) {
+                    // With a cover above, the avatar tucks just under its fading glow.
+                    Spacer(Modifier.height(if (p?.bannerUrl?.isNotBlank() == true) DurenSpacing.space3 else DurenSpacing.space4))
+                    // Aura ring — tinted by their mood tonight if they share it (F12).
+                    val accentTeal = LocalDurenColors.current.AccentTeal
+                    val auraColor = remember(theirMood, p?.showMoodCanvas, accentTeal) {
+                        val m = theirMood
+                        if (p?.showMoodCanvas == true && m != null && m.isSet)
+                            Color(android.graphics.Color.parseColor(Mood.hexFor(m.mood)))
+                        else accentTeal
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(104.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, auraColor.copy(alpha = 0.5f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DurenAvatar(
+                            avatarUrl = p?.avatarUrl,
+                            fallbackColorHex = p?.avatarColor ?: "#FF6B35",
+                            size = 88.dp,
+                            contentDescription = "Avatar"
+                        )
+                    }
+                    Spacer(Modifier.height(DurenSpacing.space3))
                     Text(
-                        text = "@${p.username}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = p?.displayName?.ifBlank { p.username } ?: "…",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    if (p.bio.isNotBlank()) {
-                        Spacer(Modifier.height(DurenSpacing.space2))
+                    if (p != null) {
                         Text(
-                            text = p.bio,
+                            text = "@${p.username}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (p.bio.isNotBlank()) {
+                            Spacer(Modifier.height(DurenSpacing.space2))
+                            Text(
+                                text = p.bio,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        // Banked away-note, if they've stepped out (F11).
+                        if (p.isBanked) {
+                            Spacer(Modifier.height(DurenSpacing.space2))
+                            Text(
+                                text = "💤 ${p.bankedStatus}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontStyle = FontStyle.Italic,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        // Mutual Spark (F25) — you echoed each other within 24h.
+                        if (mutualSpark) {
+                            Spacer(Modifier.height(DurenSpacing.space2))
+                            Text(
+                                text = "✨ Mutual Spark — your fires answered each other",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = LocalDurenColors.current.AccentTeal
+                            )
+                        }
                     }
-                    // Banked away-note, if they've stepped out (F11).
-                    if (p.isBanked) {
+                    Spacer(Modifier.height(DurenSpacing.space4))
+                    NestAction(
+                        relation = relation,
+                        onAdd = viewModel::addToNest,
+                        onCancel = viewModel::cancelRequest,
+                        onAccept = viewModel::acceptRequest,
+                        onDecline = viewModel::declineRequest
+                    )
+                    if (relation == NestRelation.Member) {
                         Spacer(Modifier.height(DurenSpacing.space2))
-                        Text(
-                            text = "💤 ${p.bankedStatus}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    // Mutual Spark (F25) — you echoed each other within 24h.
-                    if (mutualSpark) {
+                        Button(
+                            onClick = { onOpenChat(viewModel.userId) },
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) { Text("Message") }
+                        // Nest-only gestures: a private postcard (F26) and a public note (F27).
                         Spacer(Modifier.height(DurenSpacing.space2))
+                        Row(Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { showHearthDialog = true },
+                                modifier = Modifier.weight(1f).height(48.dp)
+                            ) { Text("Warm hearth 🔥", maxLines = 1) }
+                            Spacer(Modifier.width(DurenSpacing.space3))
+                            OutlinedButton(
+                                onClick = { showTestimonialDialog = true },
+                                modifier = Modifier.weight(1f).height(48.dp)
+                            ) { Text("Testimonial ✨", maxLines = 1) }
+                        }
+                    }
+                    // Nudge — a silent "I see you". Available for anyone but yourself.
+                    if (relation != NestRelation.Self) {
+                        Spacer(Modifier.height(DurenSpacing.space2))
+                        OutlinedButton(
+                            onClick = viewModel::nudge,
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) { Text("Nudge 👀") }
+                    }
+                    // What the Nest says — 30d testimonials (F27). Only shown when there are any.
+                    if (testimonials.isNotEmpty()) {
+                        Spacer(Modifier.height(DurenSpacing.space6))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(DurenSpacing.space4))
                         Text(
-                            text = "✨ Mutual Spark — your fires answered each other",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = LocalDurenColors.current.AccentTeal
+                            text = "What the Nest says",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(Modifier.height(DurenSpacing.space3))
+                        testimonials.forEach { t ->
+                            TestimonialCard(testimonial = t)
+                            Spacer(Modifier.height(DurenSpacing.space2))
+                        }
                     }
-                }
-                Spacer(Modifier.height(DurenSpacing.space4))
-                NestAction(
-                    relation = relation,
-                    onAdd = viewModel::addToNest,
-                    onCancel = viewModel::cancelRequest,
-                    onAccept = viewModel::acceptRequest,
-                    onDecline = viewModel::declineRequest
-                )
-                if (relation == NestRelation.Member) {
-                    Spacer(Modifier.height(DurenSpacing.space2))
-                    Button(
-                        onClick = { onOpenChat(viewModel.userId) },
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
-                    ) { Text("Message") }
-                    // Nest-only gestures: a private postcard (F26) and a public note (F27).
-                    Spacer(Modifier.height(DurenSpacing.space2))
-                    Row(Modifier.fillMaxWidth()) {
-                        OutlinedButton(
-                            onClick = { showHearthDialog = true },
-                            modifier = Modifier.weight(1f).height(48.dp)
-                        ) { Text("Warm hearth 🔥", maxLines = 1) }
-                        Spacer(Modifier.width(DurenSpacing.space3))
-                        OutlinedButton(
-                            onClick = { showTestimonialDialog = true },
-                            modifier = Modifier.weight(1f).height(48.dp)
-                        ) { Text("Testimonial ✨", maxLines = 1) }
-                    }
-                }
-                // Nudge — a silent "I see you". Available for anyone but yourself.
-                if (relation != NestRelation.Self) {
-                    Spacer(Modifier.height(DurenSpacing.space2))
-                    OutlinedButton(
-                        onClick = viewModel::nudge,
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
-                    ) { Text("Nudge 👀") }
-                }
-                // What the Nest says — 30d testimonials (F27). Only shown when there are any.
-                if (testimonials.isNotEmpty()) {
+
                     Spacer(Modifier.height(DurenSpacing.space6))
                     HorizontalDivider()
                     Spacer(Modifier.height(DurenSpacing.space4))
                     Text(
-                        text = "What the Nest says",
+                        text = "Their embers",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(DurenSpacing.space3))
-                    testimonials.forEach { t ->
-                        TestimonialCard(testimonial = t)
-                        Spacer(Modifier.height(DurenSpacing.space2))
-                    }
                 }
-
-                Spacer(Modifier.height(DurenSpacing.space6))
-                HorizontalDivider()
-                Spacer(Modifier.height(DurenSpacing.space4))
-                Text(
-                    text = "Their embers",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(DurenSpacing.space3))
             }
 
             if (embers.isEmpty()) {
@@ -305,7 +316,9 @@ fun PublicProfileScreen(
                         text = "Nothing burning right now.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = DurenSpacing.space4)
                     )
                 }
             } else {

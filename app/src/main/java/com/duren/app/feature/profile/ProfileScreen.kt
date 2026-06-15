@@ -48,6 +48,7 @@ import com.duren.app.ui.animation.ShimmerBox
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.EmberCard
+import com.duren.app.ui.components.ProfileBanner
 import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
@@ -86,6 +87,9 @@ fun ProfileScreen(
                     ShimmerBox(modifier = Modifier.fillMaxWidth(0.5f).height(20.dp))
                 }
             } else {
+                if (p.bannerUrl.isNotBlank()) {
+                    item { ProfileBanner(bannerUrl = p.bannerUrl, height = 160.dp) }
+                }
                 item {
                     Column(
                         modifier = Modifier
@@ -93,7 +97,8 @@ fun ProfileScreen(
                             .padding(horizontal = DurenSpacing.space6),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Spacer(Modifier.height(DurenSpacing.space8))
+                        // With a cover above, the avatar sits right under its fading glow.
+                        Spacer(Modifier.height(if (p.bannerUrl.isBlank()) DurenSpacing.space8 else DurenSpacing.space3))
                         // Presence aura — a soft ring around the avatar. Tinted by
                         // tonight's Mood Canvas when shown, otherwise teal (F12).
                         val accentTeal = LocalDurenColors.current.AccentTeal

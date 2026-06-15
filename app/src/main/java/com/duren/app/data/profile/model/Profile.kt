@@ -18,6 +18,9 @@ data class Profile(
     // A 30-char italic tagline shown under your name on every ember (Feature 14).
     val signature: String = "",
     val avatarUrl: String = "",
+    // A wide cover image (a `data:` URI) that bleeds in and fades to dark at the top
+    // of the profile. Lives only here — never denormalised onto embers.
+    val bannerUrl: String = "",
     val createdAt: Timestamp? = null,
     val lastSeen: Timestamp? = null,
     // Settings & customization (June 4 §3.3)

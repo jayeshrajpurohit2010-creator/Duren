@@ -55,8 +55,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
+import com.duren.app.ui.components.ProfileBanner
 import com.duren.app.ui.theme.DurenAccent
 import com.duren.app.ui.theme.DurenAvatarColors
+import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -68,6 +70,7 @@ fun SettingsScreen(
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val avatarUploading by viewModel.avatarUploading.collectAsStateWithLifecycle()
+    val bannerUploading by viewModel.bannerUploading.collectAsStateWithLifecycle()
     val passwordResetSent by viewModel.passwordResetSent.collectAsStateWithLifecycle()
     val deleting by viewModel.deleting.collectAsStateWithLifecycle()
     val accountDeleted by viewModel.accountDeleted.collectAsStateWithLifecycle()
@@ -89,6 +92,9 @@ fun SettingsScreen(
     val avatarPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri -> if (uri != null) viewModel.setAvatarPhoto(uri) }
+    val bannerPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> if (uri != null) viewModel.setBannerPhoto(uri) }
 
     Scaffold(
         topBar = {
@@ -193,6 +199,62 @@ fun SettingsScreen(
                         selected = selected,
                         onClick = { viewModel.setAvatarColor(option.hex) }
                     )
+                }
+            }
+
+            SectionDivider()
+
+            // ===== Cover photo =====
+            SectionHeader("Cover photo")
+            if (p.bannerUrl.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(110.dp)
+                        .clip(DurenShapes.large)
+                ) {
+                    // No scrim here — the editor wants the picked image shown plainly.
+                    ProfileBanner(bannerUrl = p.bannerUrl, height = 110.dp, scrim = false)
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(110.dp)
+                        .clip(DurenShapes.large)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No cover yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.height(DurenSpacing.space3))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(
+                    onClick = {
+                        bannerPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    enabled = !bannerUploading
+                ) {
+                    Text(
+                        when {
+                            bannerUploading -> "Updating…"
+                            p.bannerUrl.isBlank() -> "Add cover"
+                            else -> "Change cover"
+                        }
+                    )
+                }
+                if (p.bannerUrl.isNotBlank()) {
+                    Spacer(Modifier.size(DurenSpacing.space2))
+                    TextButton(onClick = { viewModel.removeBanner() }, enabled = !bannerUploading) {
+                        Text("Remove", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
 

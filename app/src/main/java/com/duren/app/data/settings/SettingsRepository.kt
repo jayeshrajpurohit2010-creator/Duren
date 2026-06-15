@@ -27,6 +27,12 @@ class SettingsRepository @Inject constructor(
     /** Store a custom avatar image (a `data:` URI) on the profile. */
     suspend fun updateAvatarUrl(avatarUrl: String): Result<Unit> = update("avatarUrl" to avatarUrl)
 
+    /** Store a cover image (a `data:` URI) on the profile. */
+    suspend fun updateBannerUrl(bannerUrl: String): Result<Unit> = update("bannerUrl" to bannerUrl)
+
+    /** Take the cover image back down. */
+    suspend fun clearBanner(): Result<Unit> = update("bannerUrl" to "")
+
     suspend fun updatePrivacy(
         showLantern: Boolean,
         showMoodCanvas: Boolean,

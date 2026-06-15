@@ -24,14 +24,16 @@ import javax.inject.Singleton
  *
  * [uploadImage] is tuned for post media (≤1080px, ~500 KB). [uploadAvatar] is
  * tuned for profile photos (≤256px, ~60 KB) so an avatar stays small enough to
- * sit on the profile doc and denormalise onto embers without bloat.
+ * sit on the profile doc and denormalise onto embers without bloat. [uploadBanner]
+ * is the profile cover (≤1080px, ~280 KB) — wide, but it lives only on the profile
+ * doc (never denormalised), so it fits beside the avatar under the 1 MB cap.
  *
  * The compression budget keeps the encoded payload well under Firestore's 1 MB
  * document limit. Failures surface as [DomainError.MediaUploadFailed] so the
  * caller never writes a reference to media that didn't materialise.
  *
  * Trade-off: inline media bloats document reads — an MVP bridge. Swapping back
- * to a hosted uploader later changes only these two methods; callers and the
+ * to a hosted uploader later changes only these methods; callers and the
  * `data:`-aware renderers stay the same.
  */
 @Singleton
@@ -46,6 +48,10 @@ class MediaUploadRepository @Inject constructor(
     /** Profile avatar — small budget so it can ride on the profile + ember docs. */
     suspend fun uploadAvatar(uri: Uri): Result<String> =
         encode(uri, AVATAR_DIMEN, AVATAR_MAX_BYTES, AVATAR_START_QUALITY, AVATAR_MIN_QUALITY)
+
+    /** Profile cover — wide budget; lives only on the profile doc (never denormalised). */
+    suspend fun uploadBanner(uri: Uri): Result<String> =
+        encode(uri, BANNER_DIMEN, BANNER_MAX_BYTES, BANNER_START_QUALITY, BANNER_MIN_QUALITY)
 
     private suspend fun encode(
         uri: Uri,
@@ -133,6 +139,12 @@ class MediaUploadRepository @Inject constructor(
         const val AVATAR_START_QUALITY = 80
         const val AVATAR_MIN_QUALITY = 40
         const val AVATAR_MAX_BYTES = 60 * 1024  // ~80 KB once Base64'd
+
+        // Cover photo (wide — sits only on the profile doc, beside the avatar)
+        const val BANNER_DIMEN = 1080
+        const val BANNER_START_QUALITY = 80
+        const val BANNER_MIN_QUALITY = 35
+        const val BANNER_MAX_BYTES = 280 * 1024  // ~373 KB once Base64'd — profile doc stays < 1 MB
 
         const val QUALITY_STEP = 10
     }

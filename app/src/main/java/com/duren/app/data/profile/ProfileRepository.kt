@@ -32,6 +32,7 @@ class ProfileRepository @Inject constructor(
                             pronouns = data["pronouns"] as? String ?: "",
                             signature = data["signature"] as? String ?: "",
                             avatarUrl = data["avatarUrl"] as? String ?: "",
+                            bannerUrl = data["bannerUrl"] as? String ?: "",
                             accentColor = data["accentColor"] as? String ?: "#2dd4bf",
                             lightModeEnabled = data["lightModeEnabled"] as? Boolean ?: false,
                             avatarColor = data["avatarColor"] as? String ?: "#FF6B35",
@@ -102,6 +103,7 @@ class ProfileRepository @Inject constructor(
             pronouns = getString("pronouns") ?: "",
             signature = getString("signature") ?: "",
             avatarUrl = getString("avatarUrl") ?: "",
+            bannerUrl = getString("bannerUrl") ?: "",
             avatarColor = getString("avatarColor") ?: "#FF6B35",
             bankedStatus = getString("bankedStatus") ?: "",
             bankedUntil = getTimestamp("bankedUntil")
