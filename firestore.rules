@@ -1,7 +1,20 @@
 rules_version = '2';
-// Duren Phase 0 — Firestore Security Rules
-// Covers only profiles/{userId} and usernames/{username}.
-// Every Phase 1+ collection gets its own rules block when introduced.
+// Duren — Firestore Security Rules
+//
+// Free-tier law: there are no Cloud Functions, so these rules are the ONLY
+// server-side enforcement in the whole app. They are written to permit exactly
+// the writes the client actually makes (traced from the data/ repositories) and
+// nothing more.
+//
+// The load-bearing idea for mutable docs (embers, lanterns, tribes) is:
+//   request.resource.data.diff(resource.data).affectedKeys().hasOnly([...])
+// which whitelists *which* fields an update may change. Anything not listed is
+// immutable. Counters are additionally bounded to a ±1 step so a stranger can't
+// rewrite echoCount to 9999, and an ember's expiry is capped so no one can
+// immortalise a post and defeat the entire point of an ephemeral network.
+//
+// Soft spots that need Cloud Functions to fully close are called out inline
+// (Keeper-only pin/wisdom, client-side rations). Accepted until Blaze.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -22,9 +35,11 @@ service cloud.firestore {
         && request.resource.data.username is string
         && request.resource.data.username.size() >= 3
         && request.resource.data.username.size() <= 30;
+      // You may only edit your own profile, and never your identity anchors:
+      // username and createdAt are frozen for life.
       allow update: if isOwner(userId)
-        // Username is immutable post-creation in Phase 0.
-        && request.resource.data.username == resource.data.username;
+        && request.resource.data.username == resource.data.username
+        && request.resource.data.get('createdAt', resource.data.createdAt) == resource.data.createdAt;
       allow delete: if isOwner(userId);
     }
 
@@ -43,6 +58,10 @@ service cloud.firestore {
 
     // ===== Tribes (Phase 1) =====
     match /tribes/{tribeId} {
+      function tribeKeys() {
+        return request.resource.data.diff(resource.data).affectedKeys();
+      }
+
       allow read: if isAuthed();
       allow create: if isAuthed()
         && request.resource.data.createdBy == request.auth.uid
@@ -50,11 +69,19 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.memberCount == 1;
-      // Any member can nudge memberCount (join/leave). Name/creator are immutable.
-      // Phase 4 moves the counter server-side; until then keep it permissive but bounded.
+      // Name / creator / createdAt / genre are immutable. The only mutable fields
+      // are the live counter (join/leave, bounded to ±1) and curated catalog flavour
+      // (description/vibe/emoji/banner/pfp/settings — the idempotent seed refresh and
+      // invite-code backfill). Phase 4 moves the counter server-side.
       allow update: if isAuthed()
         && request.resource.data.name == resource.data.name
-        && request.resource.data.createdBy == resource.data.createdBy;
+        && request.resource.data.createdBy == resource.data.createdBy
+        && tribeKeys().hasOnly([
+             'memberCount', 'inviteCode', 'description', 'vibe', 'emoji',
+             'bannerUrl', 'pfpUrl', 'settings'
+           ])
+        && request.resource.data.get('memberCount', 0) >= resource.data.get('memberCount', 0) - 1
+        && request.resource.data.get('memberCount', 0) <= resource.data.get('memberCount', 0) + 1;
       allow delete: if isAuthed() && resource.data.createdBy == request.auth.uid;
 
       // Bulletin Board (F21) — only the Keeper (tribe creator) may pin or remove a
@@ -83,9 +110,12 @@ service cloud.firestore {
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
           && request.resource.data.name.size() <= 30;
+        // Bumps may only touch the activity counters; name/creator are frozen.
         allow update: if isAuthed()
+          && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.name == resource.data.name
-          && request.resource.data.createdBy == resource.data.createdBy;
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['postCount', 'lastActiveAt', 'description']);
         allow delete: if isAuthed()
           && get(/databases/$(database)/documents/tribes/$(tribeId)).data.createdBy == request.auth.uid;
       }
@@ -101,17 +131,45 @@ service cloud.firestore {
 
     // ===== Embers (48h posts) =====
     match /embers/{emberId} {
+      function emberKeys() {
+        return request.resource.data.diff(resource.data).affectedKeys();
+      }
+
       allow read: if isAuthed();
       allow create: if isAuthed()
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.keys().hasAll(['authorId', 'createdAt', 'expiresAt', 'echoCount'])
-        && request.resource.data.echoCount == 0;
-      // Counter bumps (echo/coldMark/extension) by any authed user. Author/text/createdAt immutable.
-      // Phase 4 replaces this with Cloud Function writes for anti-gaming.
+        // A post can't arrive pre-warmed: every engagement counter starts at zero.
+        && request.resource.data.echoCount == 0
+        && request.resource.data.get('coldMarkCount', 0) == 0
+        && request.resource.data.get('whisperCount', 0) == 0
+        && request.resource.data.get('pollYes', 0) == 0
+        && request.resource.data.get('pollNo', 0) == 0;
+      // The author, the content, and the birth time are immutable forever. The only
+      // fields any authed user may move are the engagement counters (±1 a time),
+      // the echo-extension expiry/flag, and the Keeper's pin/wisdom flags. Expiry is
+      // capped at 32 days from creation so a post can never be made to live forever.
       allow update: if isAuthed()
-        && request.resource.data.authorId == resource.data.authorId
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.text == resource.data.text;
+        && emberKeys().hasOnly([
+             'echoCount', 'coldMarkCount', 'whisperCount', 'pollYes', 'pollNo',
+             'expiresAt', 'extended', 'isPinned', 'pinExpiresAt',
+             'isWisdom', 'wisdomMarkedBy', 'wisdomExpiresAt'
+           ])
+        && request.resource.data.get('echoCount', 0)     >= resource.data.get('echoCount', 0) - 1
+        && request.resource.data.get('echoCount', 0)     <= resource.data.get('echoCount', 0) + 1
+        && request.resource.data.get('coldMarkCount', 0) >= resource.data.get('coldMarkCount', 0)
+        && request.resource.data.get('coldMarkCount', 0) <= resource.data.get('coldMarkCount', 0) + 1
+        && request.resource.data.get('whisperCount', 0)  >= resource.data.get('whisperCount', 0) - 1
+        && request.resource.data.get('whisperCount', 0)  <= resource.data.get('whisperCount', 0) + 1
+        && request.resource.data.get('pollYes', 0)       >= resource.data.get('pollYes', 0)
+        && request.resource.data.get('pollYes', 0)       <= resource.data.get('pollYes', 0) + 1
+        && request.resource.data.get('pollNo', 0)        >= resource.data.get('pollNo', 0)
+        && request.resource.data.get('pollNo', 0)        <= resource.data.get('pollNo', 0) + 1
+        && (
+             !('expiresAt' in emberKeys())
+             || request.resource.data.expiresAt.toMillis()
+                  <= resource.data.createdAt.toMillis() + 2764800000  // 32 days
+           );
       allow delete: if isAuthed() && resource.data.authorId == request.auth.uid;
 
       // Echoes — one doc per user, keyed by uid.
@@ -190,9 +248,11 @@ service cloud.firestore {
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.keys().hasAll(['authorId', 'createdAt', 'expiresAt', 'foundCount'])
         && request.resource.data.foundCount == 0;
-      // foundCount bumps by any authed wanderer. Author is immutable.
+      // The only thing a passing wanderer may do is bump foundCount by one. Nothing
+      // else on a lantern — not its text, not its expiry, not its author — can change.
       allow update: if isAuthed()
-        && request.resource.data.authorId == resource.data.authorId;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['foundCount'])
+        && request.resource.data.get('foundCount', 0) == resource.data.get('foundCount', 0) + 1;
       allow delete: if isAuthed() && resource.data.authorId == request.auth.uid;
 
       // Found marks — one doc per user, keyed by uid. Write-once.
@@ -233,11 +293,14 @@ service cloud.firestore {
 
     // ===== Signals (notifications) =====
     // Inbox per user. Anyone authed may drop a Signal in your inbox (as themselves),
-    // but only you can read, mark-read, or clear them.
+    // but only you can read, mark-read, or clear them. A Signal must name its sender
+    // honestly and its type, and any message preview is length-capped to curb spam.
     match /notifications/{userId}/items/{itemId} {
       allow read: if isOwner(userId);
       allow create: if isAuthed()
-        && request.resource.data.fromUserId == request.auth.uid;
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.type is string
+        && request.resource.data.get('preview', '').size() <= 200;
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
