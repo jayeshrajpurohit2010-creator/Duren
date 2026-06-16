@@ -45,6 +45,9 @@ data class Ember(
     val tribeName: String = "",
     val text: String = "",
     val mediaUrl: String? = null,
+    // Multi-image embers: newer posts write the full photo list here; [mediaUrl] keeps
+    // the first so any older reader still shows one. Read both through [photos].
+    val mediaUrls: List<String> = emptyList(),
     val mediaType: String? = null,
     val mode: PostMode = PostMode.Named,
     // For Confess mode: the poetic mask shown instead of a name (Feature 15).
@@ -81,6 +84,9 @@ data class Ember(
     val extended: Boolean = false,
     val echoedByMe: Boolean = false
 ) {
+    /** Every photo on this ember — the multi-image list if present, else the legacy single. */
+    val photos: List<String> get() = mediaUrls.ifEmpty { listOfNotNull(mediaUrl) }
+
     /** A pin only counts while it hasn't lapsed. */
     fun pinnedNow(now: Timestamp = Timestamp.now()): Boolean =
         isPinned && (pinExpiresAt?.let { it > now } ?: false)

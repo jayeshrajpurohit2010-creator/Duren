@@ -10,6 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -324,46 +327,14 @@ fun EmberCard(
             )
         }
 
-        ember.mediaUrl?.let { media ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = if (ember.text.isBlank()) DurenSpacing.space3 else 0.dp)
-            ) {
-                val imageModifier = Modifier
-                    .fillMaxWidth()
-                    .pointerInput(media) {
-                        detectTapGestures(onTap = { zoomedMedia = media })
-                    }
-                if (media.startsWith("data:")) {
-                    val bitmap = remember(media) { decodeDataUri(media) }
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap,
-                            contentDescription = "Ember media",
-                            contentScale = ContentScale.FillWidth,
-                            modifier = imageModifier
-                        )
-                    }
-                } else {
-                    AsyncImage(
-                        model = media,
-                        contentDescription = "Ember media",
-                        contentScale = ContentScale.FillWidth,
-                        modifier = imageModifier
-                    )
-                }
-                // Hot embers glow faintly at the photo's foot.
-                if (isHot) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(2.dp)
-                            .align(Alignment.BottomCenter)
-                            .background(LocalDurenColors.current.AccentTeal.copy(alpha = 0.6f))
-                    )
-                }
-            }
+        val photos = ember.photos
+        if (photos.isNotEmpty()) {
+            EmberMedia(
+                photos = photos,
+                tightTop = ember.text.isBlank(),
+                isHot = isHot,
+                onZoom = { zoomedMedia = it }
+            )
         }
 
         // The burning bar — how much life is left, teal → amber → red.
@@ -626,6 +597,91 @@ private fun PollResultRow(label: String, pct: Int, mine: Boolean) {
                 color = LocalDurenColors.current.TextPrimary
             )
             Text(text = "$pct%", fontSize = 13.sp, color = LocalDurenColors.current.TextSecondary)
+        }
+    }
+}
+
+/** One ember photo — an inline `data:` URI decoded locally, otherwise loaded via Coil. */
+@Composable
+private fun EmberPhoto(url: String, contentScale: ContentScale, modifier: Modifier) {
+    if (url.startsWith("data:")) {
+        val bitmap = remember(url) { decodeDataUri(url) }
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = "Ember media",
+                contentScale = contentScale,
+                modifier = modifier
+            )
+        }
+    } else {
+        AsyncImage(
+            model = url,
+            contentDescription = "Ember media",
+            contentScale = contentScale,
+            modifier = modifier
+        )
+    }
+}
+
+/**
+ * An ember's photo(s). One photo bleeds edge-to-edge at its natural height, exactly as
+ * before; several become an edge-to-edge horizontal carousel of fixed-height frames you
+ * swipe through (the next one peeks to say "there's more"). Fixed height so a four-photo
+ * ember doesn't run a screen tall. Tapping any photo opens it full-screen.
+ */
+@Composable
+private fun EmberMedia(
+    photos: List<String>,
+    tightTop: Boolean,
+    isHot: Boolean,
+    onZoom: (String) -> Unit
+) {
+    val topPad = if (tightTop) DurenSpacing.space3 else 0.dp
+    if (photos.size == 1) {
+        val media = photos[0]
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = topPad)
+        ) {
+            EmberPhoto(
+                url = media,
+                contentScale = ContentScale.FillWidth,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(media) { detectTapGestures(onTap = { onZoom(media) }) }
+            )
+            // Hot embers glow faintly at the photo's foot.
+            if (isHot) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(LocalDurenColors.current.AccentTeal.copy(alpha = 0.6f))
+                )
+            }
+        }
+        return
+    }
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = topPad),
+        horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2),
+        contentPadding = PaddingValues(horizontal = DurenSpacing.space4)
+    ) {
+        items(photos) { media ->
+            EmberPhoto(
+                url = media,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillParentMaxWidth(0.82f)
+                    .height(300.dp)
+                    .clip(DurenShapes.large)
+                    .pointerInput(media) { detectTapGestures(onTap = { onZoom(media) }) }
+            )
         }
     }
 }

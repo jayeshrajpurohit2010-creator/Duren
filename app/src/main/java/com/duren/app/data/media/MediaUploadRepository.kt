@@ -45,6 +45,25 @@ class MediaUploadRepository @Inject constructor(
     suspend fun uploadImage(uri: Uri): Result<String> =
         encode(uri, MAX_DIMEN, MAX_JPEG_BYTES, START_QUALITY, MIN_QUALITY)
 
+    /**
+     * Several post photos at once. They all share one ember doc under the 1 MB cap, so
+     * the per-image byte budget shrinks as the set grows (fewer photos ⇒ sharper each).
+     * Fails the whole batch if any photo can't be encoded, so we never write an ember
+     * pointing at media that didn't materialise.
+     */
+    suspend fun uploadImages(uris: List<Uri>): Result<List<String>> {
+        if (uris.isEmpty()) return Result.success(emptyList())
+        val capped = uris.take(MAX_IMAGES)
+        val perImageBytes = (MULTI_TOTAL_BYTES / capped.size).coerceAtMost(MAX_JPEG_BYTES)
+        val encoded = ArrayList<String>(capped.size)
+        for (uri in capped) {
+            val dataUri = encode(uri, MAX_DIMEN, perImageBytes, START_QUALITY, MIN_QUALITY).getOrNull()
+                ?: return Result.failure(DomainError.MediaUploadFailed)
+            encoded.add(dataUri)
+        }
+        return Result.success(encoded)
+    }
+
     /** Profile avatar — small budget so it can ride on the profile + ember docs. */
     suspend fun uploadAvatar(uri: Uri): Result<String> =
         encode(uri, AVATAR_DIMEN, AVATAR_MAX_BYTES, AVATAR_START_QUALITY, AVATAR_MIN_QUALITY)
@@ -133,6 +152,10 @@ class MediaUploadRepository @Inject constructor(
         const val START_QUALITY = 80
         const val MIN_QUALITY = 35
         const val MAX_JPEG_BYTES = 500 * 1024  // ~680 KB once Base64'd — safely < 1 MB doc cap
+
+        // Multi-image: the whole set shares one ember doc, so budget the total and split it.
+        const val MAX_IMAGES = 4
+        const val MULTI_TOTAL_BYTES = 640 * 1024  // raw total across all photos; ~860 KB Base64'd
 
         // Avatar (small — denormalises onto embers)
         const val AVATAR_DIMEN = 256

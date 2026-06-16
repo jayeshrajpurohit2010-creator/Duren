@@ -117,7 +117,7 @@ class EmberRepository @Inject constructor(
         tribeId: String?,
         tribeName: String,
         mode: PostMode,
-        mediaUri: Uri?,
+        mediaUris: List<Uri>,
         isFragment: Boolean = false,
         fragmentThreshold: Int = 100,
         isPoll: Boolean = false,
@@ -126,14 +126,14 @@ class EmberRepository @Inject constructor(
     ): Result<String> {
         val user = auth.currentUser ?: return Result.failure(DomainError.NotAuthenticated)
         val trimmed = text.trim()
-        if (trimmed.isEmpty() && mediaUri == null) return Result.failure(DomainError.EmptyEmber)
+        if (trimmed.isEmpty() && mediaUris.isEmpty()) return Result.failure(DomainError.EmptyEmber)
 
         // Upload media first (Cloudinary, unsigned) so we never write an ember
         // pointing at an image that failed to land.
-        var mediaUrl: String? = null
+        var mediaUrls: List<String> = emptyList()
         var mediaType: String? = null
-        if (mediaUri != null) {
-            mediaUrl = mediaUploader.uploadImage(mediaUri).getOrNull()
+        if (mediaUris.isNotEmpty()) {
+            mediaUrls = mediaUploader.uploadImages(mediaUris).getOrNull()
                 ?: return Result.failure(DomainError.MediaUploadFailed)
             mediaType = "photo"
         }
@@ -170,7 +170,8 @@ class EmberRepository @Inject constructor(
                     "subEmberId" to subEmberId,
                     "subEmberName" to subEmberName,
                     "text" to trimmed,
-                    "mediaUrl" to mediaUrl,
+                    "mediaUrl" to mediaUrls.firstOrNull(),
+                    "mediaUrls" to mediaUrls,
                     "mediaType" to mediaType,
                     "mode" to mode.wire,
                     // Client timestamp, not serverTimestamp: the optimistic local write
@@ -601,6 +602,7 @@ class EmberRepository @Inject constructor(
             tribeName = getString("tribeName") ?: "",
             text = getString("text") ?: "",
             mediaUrl = getString("mediaUrl"),
+            mediaUrls = (get("mediaUrls") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             mediaType = getString("mediaType"),
             mode = PostMode.fromWire(getString("mode")),
             poeticAlias = getString("poeticAlias") ?: "",

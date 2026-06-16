@@ -95,8 +95,10 @@ fun ComposeScreen(
     var fragment by rememberSaveable { mutableStateOf(false) }
     // Quick Poll: the body becomes a yes/no question. Mutually exclusive with Fragment.
     var poll by rememberSaveable { mutableStateOf(false) }
-    // Uri is Parcelable, so rememberSaveable keeps the captured photo across rotation.
-    var mediaUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    // Up to [maxPhotos] photos on one ember. Plain remember (not Saveable): re-picking
+    // after a rotation is a fine trade for not hand-rolling a List<Uri> bundle saver.
+    val maxPhotos = 4
+    var mediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
     // Camera-first: the composer opens straight to the camera (BeReal-style). The
     // user captures a moment or skips to the text/gallery form.
@@ -108,13 +110,13 @@ fun ComposeScreen(
 
     // Photo picker launcher
     val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> if (uri != null) mediaUri = uri }
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxPhotos)
+    ) { uris -> if (uris.isNotEmpty()) mediaUris = (mediaUris + uris).take(maxPhotos) }
 
     if (cameraOpen) {
         CameraCapture(
             onCaptured = { uri ->
-                mediaUri = uri
+                mediaUris = (mediaUris + uri).take(maxPhotos)
                 cameraOpen = false
             },
             onSkip = { cameraOpen = false }
@@ -129,7 +131,7 @@ fun ComposeScreen(
         if (postState is PostState.Posted) {
             viewModel.reset()
             bodyText = ""
-            mediaUri = null
+            mediaUris = emptyList()
             selectedTribe = null
             selectedTopic = null
             viewModel.selectTribe(null)
@@ -142,7 +144,7 @@ fun ComposeScreen(
 
     val isPosting = postState is PostState.Posting
     // A poll needs its question typed; otherwise text or a photo is enough.
-    val canPost = !isPosting && (bodyText.isNotBlank() || mediaUri != null) && (!poll || bodyText.isNotBlank())
+    val canPost = !isPosting && (bodyText.isNotBlank() || mediaUris.isNotEmpty()) && (!poll || bodyText.isNotBlank())
 
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
@@ -302,9 +304,42 @@ fun ComposeScreen(
                 }
             }
 
-            // Media section
+            // Media section — up to [maxPhotos] photos on one ember.
             Column(verticalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
-                if (mediaUri == null) {
+                if (mediaUris.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)
+                    ) {
+                        mediaUris.forEach { uri ->
+                            Box {
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = "Selected image",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(96.dp)
+                                        .clip(DurenShapes.medium)
+                                )
+                                SmallFloatingActionButton(
+                                    onClick = { mediaUris = mediaUris - uri },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(DurenSpacing.space1)
+                                        .size(28.dp),
+                                    containerColor = LocalDurenColors.current.SurfaceElevated
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Remove image",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                if (mediaUris.size < maxPhotos) {
                     Row(horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space2)) {
                         OutlinedButton(
                             onClick = { cameraOpen = true },
@@ -325,32 +360,7 @@ fun ComposeScreen(
                                 size = 18.dp,
                                 modifier = Modifier.padding(end = DurenSpacing.space2)
                             )
-                            Text("Gallery")
-                        }
-                    }
-                } else {
-                    Box {
-                        AsyncImage(
-                            model = mediaUri,
-                            contentDescription = "Selected image",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 240.dp)
-                                .clip(DurenShapes.medium)
-                        )
-                        SmallFloatingActionButton(
-                            onClick = { mediaUri = null },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(DurenSpacing.space2),
-                            containerColor = LocalDurenColors.current.SurfaceElevated
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Remove image",
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Text(if (mediaUris.isEmpty()) "Gallery" else "Add more")
                         }
                     }
                 }
@@ -391,7 +401,7 @@ fun ComposeScreen(
             Button(
                 onClick = {
                     viewModel.post(
-                        bodyText, selectedTribe, selectedMode, mediaUri, fragment, poll,
+                        bodyText, selectedTribe, selectedMode, mediaUris, fragment, poll,
                         subEmber = selectedTopic
                     )
                 },

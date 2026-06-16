@@ -59,7 +59,7 @@ class ComposeViewModel @Inject constructor(
         text: String,
         tribe: Tribe?,
         mode: PostMode,
-        mediaUri: Uri?,
+        mediaUris: List<Uri>,
         isFragment: Boolean = false,
         isPoll: Boolean = false,
         subEmber: SubEmber? = null
@@ -71,7 +71,7 @@ class ComposeViewModel @Inject constructor(
                 tribeId = tribe?.id,
                 tribeName = tribe?.name ?: "",
                 mode = mode,
-                mediaUri = mediaUri,
+                mediaUris = mediaUris,
                 isFragment = isFragment,
                 isPoll = isPoll,
                 subEmberId = if (tribe != null) subEmber?.id else null,
