@@ -71,6 +71,14 @@ class AuthRepository @Inject constructor(
             val result = auth.createUserWithEmailAndPassword(normalizedEmail, password).await()
             val user = result.user ?: return Result.failure(DomainError.Unknown)
 
+            // Force the freshly-minted auth token to be live before the first Firestore
+            // write. Without this, the batch below can outrun token propagation and the
+            // profile create comes back PERMISSION_DENIED — which the rollback then turns
+            // into the maddening "account created, then signed straight back out." The
+            // rules themselves accept this exact write (proven in the emulator suite); it
+            // was purely a token-timing race, worst on a cold device.
+            user.getIdToken(true).await()
+
             val profileRef = firestore.collection(PROFILES).document(user.uid)
             val usernameRef = firestore.collection(USERNAMES).document(normalizedUsername)
 
