@@ -81,6 +81,9 @@ data class Ember(
     val echoCount: Int = 0,
     val coldMarkCount: Int = 0,
     val whisperCount: Int = 0,
+    // Kindling (Feature 31): an anonymous 🔥 react. Only the tally is kept — never a
+    // trace of who lit it, so it stays faceless to the author.
+    val kindlingCount: Int = 0,
     val extended: Boolean = false,
     val echoedByMe: Boolean = false
 ) {

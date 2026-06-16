@@ -16,7 +16,7 @@ const {
   assertSucceeds,
   assertFails,
 } = require('@firebase/rules-unit-testing');
-const { setDoc, updateDoc, deleteDoc, doc, Timestamp } = require('firebase/firestore');
+const { setDoc, updateDoc, deleteDoc, getDoc, doc, Timestamp } = require('firebase/firestore');
 
 let testEnv;
 const now = Timestamp.now();
@@ -129,6 +129,36 @@ describe('embers — abuse is blocked', () => {
     const stranger = testEnv.authenticatedContext(STRANGER).firestore();
     const farFuture = Timestamp.fromMillis(now.toMillis() + 365 * 24 * 3600 * 1000);
     await assertFails(updateDoc(doc(stranger, 'embers/e1'), { expiresAt: farFuture }));
+  });
+});
+
+describe('embers — kindling (anonymous react)', () => {
+  it('a stranger may kindle (kindlingCount +1)', async () => {
+    await seedEmber();
+    const stranger = testEnv.authenticatedContext(STRANGER).firestore();
+    await assertSucceeds(updateDoc(doc(stranger, 'embers/e1'), { kindlingCount: 1 }));
+  });
+
+  it('a stranger cannot inflate kindlingCount', async () => {
+    await seedEmber();
+    const stranger = testEnv.authenticatedContext(STRANGER).firestore();
+    await assertFails(updateDoc(doc(stranger, 'embers/e1'), { kindlingCount: 500 }));
+  });
+
+  it('a kindler records only their own write-once mark', async () => {
+    await seedEmber();
+    const stranger = testEnv.authenticatedContext(STRANGER).firestore();
+    await assertSucceeds(setDoc(doc(stranger, `embers/e1/kindling/${STRANGER}`), { createdAt: now }));
+    await assertFails(setDoc(doc(stranger, `embers/e1/kindling/${AUTHOR}`), { createdAt: now }));
+  });
+
+  it('the author cannot peek at who kindled their ember', async () => {
+    await seedEmber();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `embers/e1/kindling/${STRANGER}`), { createdAt: now });
+    });
+    const author = testEnv.authenticatedContext(AUTHOR).firestore();
+    await assertFails(getDoc(doc(author, `embers/e1/kindling/${STRANGER}`)));
   });
 });
 

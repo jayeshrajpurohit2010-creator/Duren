@@ -240,6 +240,13 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    /** Light an anonymous Kindling (F31). Fire and forget; the new tally arrives via snapshot. */
+    fun kindle(emberId: String) {
+        viewModelScope.launch {
+            emberRepository.kindle(emberId)
+        }
+    }
+
     /** Cast a yes/no vote on a poll ember (F18). The live tally arrives via snapshot. */
     fun votePoll(emberId: String, yes: Boolean) {
         viewModelScope.launch {

@@ -144,14 +144,15 @@ service cloud.firestore {
         && request.resource.data.get('coldMarkCount', 0) == 0
         && request.resource.data.get('whisperCount', 0) == 0
         && request.resource.data.get('pollYes', 0) == 0
-        && request.resource.data.get('pollNo', 0) == 0;
+        && request.resource.data.get('pollNo', 0) == 0
+        && request.resource.data.get('kindlingCount', 0) == 0;
       // The author, the content, and the birth time are immutable forever. The only
       // fields any authed user may move are the engagement counters (±1 a time),
       // the echo-extension expiry/flag, and the Keeper's pin/wisdom flags. Expiry is
       // capped at 32 days from creation so a post can never be made to live forever.
       allow update: if isAuthed()
         && emberKeys().hasOnly([
-             'echoCount', 'coldMarkCount', 'whisperCount', 'pollYes', 'pollNo',
+             'echoCount', 'coldMarkCount', 'whisperCount', 'kindlingCount', 'pollYes', 'pollNo',
              'expiresAt', 'extended', 'isPinned', 'pinExpiresAt',
              'isWisdom', 'wisdomMarkedBy', 'wisdomExpiresAt'
            ])
@@ -165,6 +166,8 @@ service cloud.firestore {
         && request.resource.data.get('pollYes', 0)       <= resource.data.get('pollYes', 0) + 1
         && request.resource.data.get('pollNo', 0)        >= resource.data.get('pollNo', 0)
         && request.resource.data.get('pollNo', 0)        <= resource.data.get('pollNo', 0) + 1
+        && request.resource.data.get('kindlingCount', 0) >= resource.data.get('kindlingCount', 0)
+        && request.resource.data.get('kindlingCount', 0) <= resource.data.get('kindlingCount', 0) + 1
         && (
              !('expiresAt' in emberKeys())
              || request.resource.data.expiresAt.toMillis()
@@ -181,6 +184,15 @@ service cloud.firestore {
 
       // Cold marks — one doc per user, keyed by uid. Reports are write-once.
       match /coldMarks/{userId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if false;
+      }
+
+      // Kindling (F31) — anonymous 🔥, one write-once doc per user. Readable only by
+      // its own writer, so the ember's author watches the tally rise but never learns
+      // who lit it.
+      match /kindling/{userId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId);
         allow update, delete: if false;

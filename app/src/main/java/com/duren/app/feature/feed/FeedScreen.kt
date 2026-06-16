@@ -223,7 +223,8 @@ fun FeedScreen(
                                 onColdMark = { reason -> viewModel.coldMark(ember.id, reason) },
                                 canDelete = ember.authorId == viewModel.currentUserId,
                                 onDelete = { viewModel.deleteEmber(ember.id) },
-                                onVotePoll = { yes -> viewModel.votePoll(ember.id, yes) }
+                                onVotePoll = { yes -> viewModel.votePoll(ember.id, yes) },
+                                onKindle = { viewModel.kindle(ember.id) }
                             )
                         }
                     }

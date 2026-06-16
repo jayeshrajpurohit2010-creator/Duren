@@ -89,6 +89,9 @@ fun EmberCard(
     onDelete: () -> Unit = {},
     // Quick Poll: cast a yes/no vote (F18). No-op for non-poll embers.
     onVotePoll: (yes: Boolean) -> Unit = {},
+    // Kindling (F31): light an anonymous 🔥. Null where a surface doesn't wire it — the
+    // count still shows (read-only), the flame just isn't tappable there.
+    onKindle: (() -> Unit)? = null,
     // Keeper-only tribe moderation (F19 pin, F23 wisdom). Only the tribe feed sets these.
     canModerate: Boolean = false,
     onTogglePin: () -> Unit = {},
@@ -103,6 +106,9 @@ fun EmberCard(
     // Local-only so the poll flips to results the moment you vote; the authoritative
     // tallies still arrive via the realtime listener on the ember doc.
     var myVote by remember(ember.id) { mutableStateOf<Boolean?>(null) }
+    // Kindling is fire-and-forget and anonymous, so we just remember that you lit one
+    // this session — to bump the count immediately and stop a second tap.
+    var kindledLocally by remember(ember.id) { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val heartScale = remember { Animatable(1f) }
@@ -405,6 +411,33 @@ fun EmberCard(
                             fontSize = 12.sp,
                             color = LocalDurenColors.current.TextMuted
                         )
+                    }
+
+                    // Kindling (F31) — an anonymous 🔥. Shows wherever there are any, but
+                    // is only tappable on a surface that wired onKindle (and never on a
+                    // Final Ember, which just rests).
+                    val kindleTotal = ember.kindlingCount + if (kindledLocally) 1 else 0
+                    if (onKindle != null || kindleTotal > 0) {
+                        Spacer(modifier = Modifier.width(DurenSpacing.space4))
+                        val canKindle = interactive && onKindle != null && !kindledLocally && !ember.isFinal
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = if (canKindle) {
+                                Modifier.clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { kindledLocally = true; onKindle?.invoke() }
+                            } else Modifier
+                        ) {
+                            Text(text = "🔥", fontSize = 13.sp)
+                            Spacer(modifier = Modifier.width(DurenSpacing.space1))
+                            Text(
+                                text = "$kindleTotal",
+                                fontSize = 12.sp,
+                                color = if (kindledLocally) LocalDurenColors.current.AccentTeal
+                                        else LocalDurenColors.current.TextMuted
+                            )
+                        }
                     }
                 }
 

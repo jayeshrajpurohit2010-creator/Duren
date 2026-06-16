@@ -185,6 +185,7 @@ class EmberRepository @Inject constructor(
                     "echoCount" to 0,
                     "coldMarkCount" to 0,
                     "whisperCount" to 0,
+                    "kindlingCount" to 0,
                     "extended" to false
                 )
             ).await()
@@ -449,6 +450,30 @@ class EmberRepository @Inject constructor(
         }
     }
 
+    /**
+     * Kindling (F31) — an anonymous 🔥. One per user, write-once (the doc id is the
+     * caller's uid, so a second tap is a no-op), and the tally bumps in the same
+     * transaction. It stores no author trace beyond that id, and the rules keep the
+     * kindling subcollection readable only by its own writer — so an ember's author
+     * watches the count rise but never learns who lit it. Unlike an echo it sends no
+     * Signal, because a Signal would carry the kindler's uid and quietly unmask them.
+     */
+    suspend fun kindle(emberId: String): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(DomainError.NotAuthenticated)
+        val emberRef = firestore.collection(EMBERS).document(emberId)
+        val markRef = emberRef.collection(KINDLING).document(uid)
+        return try {
+            firestore.runTransaction { txn ->
+                if (txn.get(markRef).exists()) return@runTransaction
+                txn.set(markRef, mapOf("createdAt" to Timestamp.now()))
+                txn.update(emberRef, "kindlingCount", FieldValue.increment(1))
+            }.await()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            Result.failure(DomainError.Unknown)
+        }
+    }
+
     /** Live whispers (comments) on an ember, oldest-first so the thread reads top-to-bottom. */
     fun observeWhispers(emberId: String): Flow<List<Whisper>> = callbackFlow {
         val reg = firestore.collection(EMBERS).document(emberId)
@@ -623,6 +648,7 @@ class EmberRepository @Inject constructor(
             echoCount = (getLong("echoCount") ?: 0L).toInt(),
             coldMarkCount = (getLong("coldMarkCount") ?: 0L).toInt(),
             whisperCount = (getLong("whisperCount") ?: 0L).toInt(),
+            kindlingCount = (getLong("kindlingCount") ?: 0L).toInt(),
             extended = getBoolean("extended") == true
         )
     }
@@ -631,6 +657,7 @@ class EmberRepository @Inject constructor(
         const val EMBERS = "embers"
         const val ECHOES = "echoes"
         const val COLD_MARKS = "coldMarks"
+        const val KINDLING = "kindling"
         const val WHISPERS = "whispers"
         const val POLL_VOTES = "pollVotes"
         const val PROFILES = "profiles"
