@@ -186,31 +186,11 @@ class FeedViewModel @Inject constructor(
     )
 
     /**
-     * Phase-1 client-side heat ranking — a faithful slice of the Algorithm Spec's
-     * scoring layer, runnable without Cloud Functions. Order embers by engagement
-     * lifted by recency and damped by age (classic gravity decay), so a fresh post
-     * still surfaces while a post that's "catching fire" outranks an older quiet one.
-     * Cold marks subtract from heat (light anti-gaming). Embers from a tribe you've
-     * joined or someone in your Nest get an [AFFINITY_BOOST] multiplier — the
-     * personalization layer, done client-side. The full 7-layer, server-side system
-     * replaces this in Phase 4.
-     *
-     *   heat = (echoes − coldMarks, floored at 0, +1) / (ageHours + 2) ^ GRAVITY
-     *          × (affinity ? BOOST : 1)
+     * Phase-1 client-side heat ranking. The scoring itself lives in [FeedRanking] as a
+     * pure, tested function; here we just feed it the clock and the affinity predicate.
      */
-    private fun rankByHeat(embers: List<Ember>, affinity: Affinity): List<Ember> {
-        val now = System.currentTimeMillis()
-        return embers.sortedByDescending { ember ->
-            val createdMs = ember.createdAt?.toDate()?.time ?: now
-            val ageHours = (now - createdMs).coerceAtLeast(0L) / 3_600_000.0
-            val engagement = (ember.echoCount - ember.coldMarkCount).coerceAtLeast(0) + 1
-            val base = engagement.toDouble() / Math.pow(ageHours + 2.0, HEAT_GRAVITY)
-            // Your people punch above strangers: an ember from a tribe you've joined or
-            // someone in your Nest rides higher — but a truly blazing stranger ember can
-            // still break through, so the Clearing feels like yours without going blind.
-            if (affinity.covers(ember)) base * AFFINITY_BOOST else base
-        }
-    }
+    private fun rankByHeat(embers: List<Ember>, affinity: Affinity): List<Ember> =
+        FeedRanking.rank(embers, System.currentTimeMillis()) { affinity.covers(it) }
 
     /** A snapshot of what the user follows — joined tribes + Nest — for the feed boost. */
     private data class Affinity(val tribeIds: Set<String>, val nestIds: Set<String>) {
@@ -281,12 +261,4 @@ class FeedViewModel @Inject constructor(
         }
     }
 
-    private companion object {
-        // Higher = recency wins harder over raw echo count. 1.5 ≈ Hacker-News gravity.
-        const val HEAT_GRAVITY = 1.5
-
-        // Heat multiplier for embers from your tribes / Nest. ~4× lifts your people well
-        // above strangers while still letting a smoking-hot stranger ember break through.
-        const val AFFINITY_BOOST = 4.0
-    }
 }
