@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.core.time.NightEconomy
@@ -71,6 +72,8 @@ fun FeedScreen(
     onOpenSearch: () -> Unit = {},
     onOpenSignal: () -> Unit = {},
     onOpenMessages: () -> Unit = {},
+    doveMode: Boolean = false,
+    onToggleDove: () -> Unit = {},
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -91,25 +94,37 @@ fun FeedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { DurenMasthead(subtitle = "The Clearing") },
+                title = { if (!doveMode) DurenMasthead(subtitle = "The Clearing") },
                 actions = {
-                    IconButton(onClick = onOpenSignal) {
-                        BadgedBox(
-                            badge = {
-                                if (unreadSignals > 0) {
-                                    Badge { Text(if (unreadSignals > 9) "9+" else "$unreadSignals") }
+                    if (!doveMode) {
+                        IconButton(onClick = onOpenSignal) {
+                            BadgedBox(
+                                badge = {
+                                    if (unreadSignals > 0) {
+                                        Badge { Text(if (unreadSignals > 9) "9+" else "$unreadSignals") }
+                                    }
                                 }
+                            ) {
+                                DurenIcon(DurenIcon.Bell, size = 22.dp)
                             }
-                        ) {
-                            DurenIcon(DurenIcon.Bell, size = 22.dp)
+                        }
+                        IconButton(onClick = onOpenMessages) {
+                            // DMs are "Expiring Embers" — the speech-bubble whisper glyph.
+                            DurenIcon(DurenIcon.Whisper, size = 22.dp)
+                        }
+                        IconButton(onClick = onOpenSearch) {
+                            DurenIcon(DurenIcon.Search, size = 22.dp)
                         }
                     }
-                    IconButton(onClick = onOpenMessages) {
-                        // DMs are "Expiring Embers" — the speech-bubble whisper glyph.
-                        DurenIcon(DurenIcon.Whisper, size = 22.dp)
-                    }
-                    IconButton(onClick = onOpenSearch) {
-                        DurenIcon(DurenIcon.Search, size = 22.dp)
+                    // Dove Mode (F32) — the one control that survives, so you can always
+                    // come back. Teal once the campfire's gone private.
+                    IconButton(onClick = onToggleDove) {
+                        Text(
+                            text = "🕊",
+                            fontSize = 18.sp,
+                            color = if (doveMode) LocalDurenColors.current.AccentTeal
+                                    else LocalDurenColors.current.TextMuted
+                        )
                     }
                 }
             )

@@ -1,5 +1,10 @@
 package com.duren.app.feature.nav
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -10,6 +15,9 @@ import com.duren.app.ui.theme.LocalDurenColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.duren.app.ui.components.DurenIcon
@@ -45,6 +53,10 @@ private data class TabSpec<T : Any>(
 fun MainScaffold(onSignedOut: () -> Unit) {
     val tabsNav = rememberNavController()
 
+    // Dove Mode (F32): a private campfire — the chrome dissolves so only embers in the
+    // dark remain, with one quiet dove to come back. Held here so the bottom bar can go.
+    var doveMode by rememberSaveable { mutableStateOf(false) }
+
     val tabs = listOf(
         // Duren's own hand-drawn glyphs (design export `Icon.*`), not Material.
         TabSpec(StateTab, "Clearing", DurenIcon.Ember),
@@ -69,11 +81,16 @@ fun MainScaffold(onSignedOut: () -> Unit) {
             it.hasRoute(CreateTribeRoute::class) ||
             it.hasRoute(TribeDetailRoute::class)
     } == true
-    val showBottomBar = !onFullScreen
+    // Dove Mode dissolves the bottom bar too — the whole point is no chrome.
+    val showBottomBar = !onFullScreen && !doveMode
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = fadeIn() + slideInVertically { it },
+                exit = fadeOut() + slideOutVertically { it }
+            ) {
                 NavigationBar(
                     // Translucent dark, not solid black — the bar sits quietly over the
                     // darkness instead of fencing it off with a hard Material edge.
@@ -117,7 +134,9 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                 FeedScreen(
                     onOpenSearch = { tabsNav.navigate(SearchRoute) },
                     onOpenSignal = { tabsNav.navigate(SignalRoute) },
-                    onOpenMessages = { tabsNav.navigate(ChatListRoute) }
+                    onOpenMessages = { tabsNav.navigate(ChatListRoute) },
+                    doveMode = doveMode,
+                    onToggleDove = { doveMode = !doveMode }
                 )
             }
             composable<TribesTab> {
