@@ -15,6 +15,14 @@ import java.util.TimeZone
 enum class NightPhase { DeadHours, MorningFade, Day }
 
 /**
+ * Whether the "loud" actions — composing a new ember — are allowed right now. The night's
+ * genuine off-switch closes only during [NightPhase.DeadHours]; Morning Fade and Day stay
+ * open. Kept as a pure rule beside the phases so the gate is testable without a clock, and
+ * so every caller quiets on the same line instead of re-deciding what "resting" means.
+ */
+val NightPhase.allowsPosting: Boolean get() = this != NightPhase.DeadHours
+
+/**
  * Decides the [NightPhase] from a wall clock — **entirely on-device, for free.**
  *
  * This is the whole answer to "how do you do Dead Hours country-by-country?": there

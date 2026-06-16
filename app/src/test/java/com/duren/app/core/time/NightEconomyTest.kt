@@ -1,6 +1,7 @@
 package com.duren.app.core.time
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -59,6 +60,19 @@ class NightEconomyTest {
     fun `a real IANA timezone resolves`() {
         assertValidPhase(NightEconomy.phaseFor("Asia/Kolkata"))
         assertValidPhase(NightEconomy.phaseFor("America/New_York"))
+    }
+
+    @Test
+    fun `composing is barred only during dead hours`() {
+        assertFalse("Dead Hours must close the composer", NightPhase.DeadHours.allowsPosting)
+        assertTrue("Morning Fade stays open", NightPhase.MorningFade.allowsPosting)
+        assertTrue("Day stays open", NightPhase.Day.allowsPosting)
+    }
+
+    @Test
+    fun `the off-switch closes for exactly one hour of the day`() {
+        val barred = (0..23).count { !NightEconomy.phaseForHour(it).allowsPosting }
+        assertEquals(1, barred)
     }
 
     private fun assertValidPhase(phase: NightPhase) {

@@ -6,6 +6,10 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -51,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -63,6 +68,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.duren.app.core.time.NightEconomy
+import com.duren.app.core.time.NightPhase
 import com.duren.app.data.ember.model.PostMode
 import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
@@ -74,6 +81,7 @@ import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 import com.duren.app.ui.theme.Temperature
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,6 +120,21 @@ fun ComposeScreen(
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxPhotos)
     ) { uris -> if (uris.isNotEmpty()) mediaUris = (mediaUris + uris).take(maxPhotos) }
+
+    // Night Economy off-switch — the composer goes dark during Dead Hours (2–3 AM),
+    // following the viewer's own clock like the feed banner. Re-checked each minute so it
+    // lifts on its own at 3 AM without the user having to leave this screen.
+    var nightPhase by remember { mutableStateOf(NightEconomy.phaseFor(null)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            nightPhase = NightEconomy.phaseFor(null)
+            delay(60_000)
+        }
+    }
+    if (nightPhase == NightPhase.DeadHours) {
+        DeadHoursRest()
+        return
+    }
 
     if (cameraOpen) {
         CameraCapture(
@@ -543,6 +566,86 @@ private fun EmberReleaseOverlay(onDone: () -> Unit) {
 }
 
 private val ReleaseGlow = Color(0xFFFFA040)
+
+/**
+ * Dead Hours (2–3 AM) — the composer's resting face. The whole compose surface is
+ * replaced by a moon breathing slowly over a dim halo, so the off-switch is *felt*, not
+ * just announced: there's nothing here to post into until the night lifts. Echoes the
+ * feed's Night banner copy and its slate-violet resting accent.
+ */
+@Composable
+private fun DeadHoursRest() {
+    val colors = LocalDurenColors.current
+    val breath = rememberInfiniteTransition(label = "dead-hours-breath")
+    val glow by breath.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.BackgroundPrimary),
+        contentAlignment = Alignment.Center
+    ) {
+        // A soft slate halo that swells and settles like slow breathing.
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(size.width * 0.5f, size.height * 0.40f)
+            val r = size.minDimension * (0.20f + 0.06f * glow)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(RestGlow.copy(alpha = 0.22f * glow), Color.Transparent),
+                    center = center,
+                    radius = r
+                ),
+                radius = r,
+                center = center
+            )
+        }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = DurenSpacing.space6)
+        ) {
+            Text(
+                text = "🌙",
+                fontSize = 64.sp,
+                modifier = Modifier
+                    .scale(0.92f + 0.08f * glow)
+                    .alpha(0.65f + 0.35f * glow)
+            )
+            Spacer(Modifier.height(DurenSpacing.space5))
+            Text(
+                text = "The campfire's resting",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.TextPrimary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(DurenSpacing.space3))
+            Text(
+                text = "It's Dead Hours (2–3 AM). New embers wait until the night lifts — " +
+                    "sleep, the fire will keep.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.TextSecondary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(DurenSpacing.space5))
+            Text(
+                text = "Composing wakes at 3 AM",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = RestGlow.copy(alpha = 0.85f)
+            )
+        }
+    }
+}
+
+// The same slate-violet the Night banner rests in — keeps the two surfaces in one key.
+private val RestGlow = Color(0xFF8B95C9)
 
 /** A "Post as" choice. Selected fills teal with near-black text; the rest stay dark. */
 @Composable

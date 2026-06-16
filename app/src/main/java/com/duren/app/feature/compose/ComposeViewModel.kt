@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duren.app.core.DomainError
+import com.duren.app.core.time.NightEconomy
+import com.duren.app.core.time.allowsPosting
 import com.duren.app.data.ember.EmberRepository
 import com.duren.app.data.ember.model.PostMode
 import com.duren.app.data.tribe.TribeRepository
@@ -64,6 +66,14 @@ class ComposeViewModel @Inject constructor(
         isPoll: Boolean = false,
         subEmber: SubEmber? = null
     ) {
+        // The Night Economy off-switch: no new embers during Dead Hours, even if the
+        // screen was already open when 2 AM rolled past. The composer shows its resting
+        // face; this is the backstop so a stray tap can't slip one through. Follows the
+        // viewer's own clock, same as the feed's banner.
+        if (!NightEconomy.phaseFor(null).allowsPosting) {
+            _state.value = PostState.Error("The campfire's resting until 3 AM — your ember can wait for the light.")
+            return
+        }
         viewModelScope.launch {
             _state.value = PostState.Posting
             val result = emberRepository.createEmber(
