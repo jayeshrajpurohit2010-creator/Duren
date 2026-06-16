@@ -101,11 +101,9 @@ fun TribesScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Discover") },
-                actions = {
-                    TextButton(onClick = { showCodeDialog = true }) {
-                        Text("Have a code?", color = LocalDurenColors.current.AccentTeal, fontSize = 13.sp)
-                    }
-                },
+                // Invite codes are gone — you find a fire by name in Discover, or a
+                // friend passes you the ember from inside the tribe (a share, not a code).
+                actions = {},
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     titleContentColor = LocalDurenColors.current.TextPrimary

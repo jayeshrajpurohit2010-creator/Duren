@@ -1,5 +1,7 @@
 package com.duren.app.feature.tribes
 
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -328,16 +330,27 @@ private fun TribeDetailHeader(
                 )
             }
 
-            // Invite code (F37) — members can hand these six digits to a friend.
-            if (tribe.isMember && tribe.inviteCode.isNotBlank()) {
-                val clipboard = LocalClipboardManager.current
+            // Pass the ember — invite a friend to this fire through the system share
+            // sheet. This replaces the old six-digit invite code: nothing to read out
+            // or scan, they just find the fire by name. (Once Cloud Functions land, this
+            // becomes a real deep link straight into the tribe.)
+            if (tribe.isMember) {
+                val context = LocalContext.current
                 Spacer(Modifier.height(DurenSpacing.space2))
                 Text(
-                    text = "🎟 Invite code ${tribe.inviteCode} · tap to copy",
+                    text = "🔥 Pass the ember · invite a friend",
                     style = MaterialTheme.typography.labelSmall,
-                    color = LocalDurenColors.current.TextSecondary,
+                    color = LocalDurenColors.current.AccentTeal,
                     modifier = Modifier.clickable {
-                        clipboard.setText(AnnotatedString(tribe.inviteCode))
+                        val share = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Come sit by the fire at \"${tribe.name}\" on Duren tonight 🔥 " +
+                                    "Find the campfire by name."
+                            )
+                        }
+                        context.startActivity(Intent.createChooser(share, "Pass the ember"))
                     }
                 )
             }
