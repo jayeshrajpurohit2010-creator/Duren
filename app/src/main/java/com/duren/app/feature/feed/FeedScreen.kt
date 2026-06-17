@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -50,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -89,6 +91,10 @@ fun FeedScreen(
     val tab by viewModel.tab.collectAsStateWithLifecycle()
     val unreadSignals by viewModel.unreadSignals.collectAsStateWithLifecycle()
 
+    // The top bar slips away as you scroll down into the embers and returns the moment
+    // you pull back up — less chrome, more campfire (PART2 "top-bar-hides-on-scroll").
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     // Night Economy phase for the global Clearing follows the viewer's own device
     // timezone (free, no backend). Re-checked each minute so the banner appears and
     // clears on its own as 2 AM / 6 AM roll past.
@@ -101,8 +107,10 @@ fun FeedScreen(
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = scrollBehavior,
                 title = { if (!doveMode) DurenMasthead(subtitle = "The Clearing") },
                 actions = {
                     if (!doveMode) {

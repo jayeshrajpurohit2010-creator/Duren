@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import com.duren.app.ui.components.glassTopAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,6 +97,7 @@ fun NestFeedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = glassTopAppBarColors(),
                 title = { Text("The Nest") },
                 actions = {
                     // Smoke Signal (F30): one broadcast to the whole Nest, once a week.

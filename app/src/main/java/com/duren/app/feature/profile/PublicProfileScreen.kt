@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import com.duren.app.ui.components.glassTopAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -162,6 +163,7 @@ fun PublicProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = glassTopAppBarColors(),
                 title = { Text(profile?.username?.let { "@$it" } ?: "Presence") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

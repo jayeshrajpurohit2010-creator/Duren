@@ -43,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import com.duren.app.ui.components.glassTopAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -107,6 +108,7 @@ fun TribeDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = glassTopAppBarColors(),
                 title = { Text(tribe?.name ?: "Tribe") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

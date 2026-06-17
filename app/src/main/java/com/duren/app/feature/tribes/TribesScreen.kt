@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import com.duren.app.ui.components.glassTopAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -104,10 +105,7 @@ fun TribesScreen(
                 // Invite codes are gone — you find a fire by name in Discover, or a
                 // friend passes you the ember from inside the tribe (a share, not a code).
                 actions = {},
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = LocalDurenColors.current.TextPrimary
-                )
+                colors = glassTopAppBarColors()
             )
         },
         floatingActionButton = {
