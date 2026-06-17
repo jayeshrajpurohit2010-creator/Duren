@@ -1,0 +1,60 @@
+name: Release
+
+# Push a tag like v1.0.11 to cut a release: this builds the APK and attaches it
+# to a GitHub Release so people can sideload it. (Free-tier distribution — no Play
+# Console needed yet.)
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: Build APK & publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # A *published* APK has to talk to the real Firebase project, so it needs the
+      # real google-services.json. Store it as a base64 repo secret named
+      # GOOGLE_SERVICES_JSON (Settings → Secrets → Actions). Without it we still
+      # build, but the APK won't reach the backend — handy for a smoke test only.
+      - name: Provide google-services.json
+        env:
+          GSJSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GSJSON" ]; then
+            echo "$GSJSON" | base64 -d > app/google-services.json
+            echo "Using real google-services.json from secret."
+          else
+            echo "::warning::GOOGLE_SERVICES_JSON secret not set — APK will build but won't reach Firebase."
+            echo '{"project_info":{"project_number":"000000000000","project_id":"demo-duren-ci","storage_bucket":"demo-duren-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"com.duren"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyDUMMYCIKEYDONOTUSExxxxxxxxxxxxxxx"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # Debug-signed so it installs without a release keystore secret. When you're
+      # ready for a Play upload, add the keystore as secrets and switch this to
+      # assembleRelease with a signingConfig.
+      - name: Build APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/debug/*.apk
+          generate_release_notes: true
+          fail_on_unmatched_files: true
