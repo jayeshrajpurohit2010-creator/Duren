@@ -46,6 +46,13 @@ object DurenColors {
     // Button text on teal — near-black, never white (brief requirement)
     val OnAccent = Color(0xFF1A1A1A)
 
+    // Text on intentionally-dark brand surfaces (vibe-gradient tribe tiles/headers).
+    // These surfaces stay near-black in light mode too, so this text never inverts —
+    // the light palette reuses these exact values.
+    val OnDarkPrimary = Color(0xFFFFFFFF)
+    val OnDarkSecondary = Color(0xFFB4B4BB)
+    val OnDarkMuted = Color(0xFF94A3B8)
+
     // Temperature spectrum (Phase 1+)
     val TempCold = Color(0xFF94A3B8)
     val TempWarm = Color(0xFFB4B4BB)

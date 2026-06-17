@@ -44,6 +44,12 @@ class DurenPalette(
     val SemanticSuccess: Color,
     val SemanticInfo: Color,
     val OnAccent: Color,
+    // Text that always sits on an intentionally-dark brand surface (vibe-gradient
+    // tribe tiles/headers). Those gradients stay near-black in BOTH themes, so their
+    // text must stay light in both — these never invert with the theme.
+    val OnDarkPrimary: Color,
+    val OnDarkSecondary: Color,
+    val OnDarkMuted: Color,
     val TempCold: Color,
     val TempWarm: Color,
     val TempHot: Color,
@@ -78,6 +84,9 @@ val DarkDurenPalette = DurenPalette(
     SemanticSuccess = DurenColors.SemanticSuccess,
     SemanticInfo = DurenColors.SemanticInfo,
     OnAccent = DurenColors.OnAccent,
+    OnDarkPrimary = DurenColors.OnDarkPrimary,
+    OnDarkSecondary = DurenColors.OnDarkSecondary,
+    OnDarkMuted = DurenColors.OnDarkMuted,
     TempCold = DurenColors.TempCold,
     TempWarm = DurenColors.TempWarm,
     TempHot = DurenColors.TempHot,
@@ -112,6 +121,11 @@ val LightDurenPalette = DurenPalette(
     SemanticSuccess = DurenColors.SemanticSuccess,
     SemanticInfo = DurenColors.SemanticInfo,
     OnAccent = DurenColorsLight.OnAccent,
+    // Same light-on-dark values as the dark palette — the vibe gradient these sit on
+    // is near-black in light mode too, so the text can't follow the inverted theme.
+    OnDarkPrimary = DurenColors.OnDarkPrimary,
+    OnDarkSecondary = DurenColors.OnDarkSecondary,
+    OnDarkMuted = DurenColors.OnDarkMuted,
     TempCold = DurenColors.TempCold,
     TempWarm = DurenColors.TempWarm,
     TempHot = DurenColors.TempHot,

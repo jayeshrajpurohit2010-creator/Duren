@@ -60,6 +60,7 @@ import com.duren.app.ui.theme.DurenAccent
 import com.duren.app.ui.theme.DurenAvatarColors
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
+import com.duren.app.ui.theme.LocalDurenColors
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -527,10 +528,12 @@ private fun Swatch(color: Color, selected: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         if (selected) {
+            // The check sits on a bright accent swatch — always near-black, like any
+            // on-accent content, in both themes.
             DurenIcon(
                 DurenIcon.Check,
                 size = 18.dp,
-                tint = Color(0xFF1A1A1A)
+                tint = LocalDurenColors.current.OnAccent
             )
         }
     }
