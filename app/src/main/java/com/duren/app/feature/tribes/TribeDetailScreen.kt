@@ -551,6 +551,7 @@ private fun NewTopicDialog(
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = LocalDurenColors.current.GlassStrong,
         title = { Text("Open a topic") },
         text = {
             Column {
@@ -757,6 +758,7 @@ private fun AddBulletinDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = LocalDurenColors.current.GlassStrong,
         title = { Text("Pin a notice") },
         text = {
             Column {

@@ -15,7 +15,13 @@ object DurenColors {
     val BackgroundPrimary = Color(0xFF0A0A0A)
     val BackgroundSecondary = Color(0xFF121212)
     val BackgroundTertiary = Color(0xFF1A1A1C)
-    val Glass = Color(0xFF141416).copy(alpha = 0.55f)
+    val Glass = Color(0xFF141416).copy(alpha = 0.62f)
+
+    // Glassmorphism — frosted chrome + overlays. Strong = legible panels/dialogs
+    // (text must stay readable); Border = the hairline rim that lifts a glass
+    // surface off whatever sits behind it.
+    val GlassStrong = Color(0xFF17171A).copy(alpha = 0.85f)
+    val GlassBorder = Color(0xFFFFFFFF).copy(alpha = 0.10f)
 
     // Surfaces (cards)
     val SurfacePrimary = Color(0xFF1E1E1E)

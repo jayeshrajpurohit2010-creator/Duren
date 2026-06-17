@@ -5,6 +5,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -18,8 +24,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import com.duren.app.ui.animation.DurenSprings
 import com.duren.app.ui.components.DurenIcon
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -91,6 +101,7 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                 enter = fadeIn() + slideInVertically { it },
                 exit = fadeOut() + slideOutVertically { it }
             ) {
+                Box {
                 NavigationBar(
                     // Translucent dark, not solid black — the bar sits quietly over the
                     // darkness instead of fencing it off with a hard Material edge.
@@ -108,7 +119,20 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                                     restoreState = true
                                 }
                             },
-                            icon = { DurenIcon(tab.icon, size = 24.dp) },
+                            icon = {
+                                // The active tab's glyph springs up a touch — a small,
+                                // physical "you are here" instead of a Material pill.
+                                val iconScale by animateFloatAsState(
+                                    targetValue = if (selected) 1.2f else 1f,
+                                    animationSpec = DurenSprings.Medium,
+                                    label = "navIconScale"
+                                )
+                                DurenIcon(
+                                    tab.icon,
+                                    size = 24.dp,
+                                    modifier = Modifier.scale(iconScale)
+                                )
+                            },
                             label = { Text(tab.label) },
                             // Teal where you are, near-invisible where you're not — and
                             // no Material "pill" highlight behind the active icon.
@@ -122,13 +146,37 @@ fun MainScaffold(onSignedOut: () -> Unit) {
                         )
                     }
                 }
+                    // Glass rim: a soft swept top edge so the frosted bar lifts off
+                    // the content instead of dissolving into it (key in light mode).
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        LocalDurenColors.current.GlassBorder,
+                                        Color.Transparent,
+                                    )
+                                )
+                            )
+                    )
+                }
             }
         }
     ) { padding ->
         NavHost(
             navController = tabsNav,
             startDestination = StateTab,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(padding),
+            // Every destination breathes in: a soft fade with a hair of upward drift, so
+            // moving between tabs and into pushed screens feels lit, not snapped.
+            enterTransition = { fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 18 } },
+            exitTransition = { fadeOut(tween(150)) },
+            popEnterTransition = { fadeIn(tween(220)) },
+            popExitTransition = { fadeOut(tween(150)) + slideOutVertically(tween(150)) { it / 18 } }
         ) {
             composable<StateTab> {
                 FeedScreen(

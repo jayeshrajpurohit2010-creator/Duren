@@ -26,12 +26,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.GlassSurface
+import com.duren.app.ui.components.GlassBackdrop
+import com.duren.app.ui.components.glassTopAppBarColors
+import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +50,11 @@ fun MyNestScreen(
     val incoming by viewModel.incoming.collectAsStateWithLifecycle()
     val members by viewModel.members.collectAsStateWithLifecycle()
 
+    GlassBackdrop(modifier = Modifier.fillMaxSize()) {
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
                 title = { Text("Your Nest") },
@@ -53,7 +62,8 @@ fun MyNestScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = glassTopAppBarColors()
             )
         }
     ) { padding ->
@@ -75,6 +85,7 @@ fun MyNestScreen(
                         username = p?.username.orEmpty(),
                         avatarUrl = p?.avatarUrl,
                         avatarColor = p?.avatarColor ?: "#FF6B35",
+                        modifier = Modifier.animateItem(),
                         onClick = { onOpenProfile(request.fromUserId) }
                     ) {
                         Button(
@@ -109,6 +120,7 @@ fun MyNestScreen(
                         username = member.username,
                         avatarUrl = member.avatarUrl,
                         avatarColor = member.avatarColor,
+                        modifier = Modifier.animateItem(),
                         onClick = { onOpenProfile(member.uid) }
                     ) {
                         Button(
@@ -124,6 +136,7 @@ fun MyNestScreen(
                 }
             }
         }
+    }
     }
 }
 
@@ -143,14 +156,19 @@ private fun PersonRow(
     username: String,
     avatarUrl: String?,
     avatarColor: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     trailing: @Composable () -> Unit
 ) {
+    GlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        shape = DurenShapes.medium
+    ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .pressableCard(onClick = onClick)
-            .padding(vertical = DurenSpacing.space2),
+            .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space2),
         verticalAlignment = Alignment.CenterVertically
     ) {
         DurenAvatar(
@@ -176,5 +194,6 @@ private fun PersonRow(
             }
         }
         trailing()
+    }
     }
 }

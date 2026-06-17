@@ -314,6 +314,7 @@ private fun JoinByCodeDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = LocalDurenColors.current.GlassStrong,
         title = { Text("Join with a code") },
         text = {
             Column {

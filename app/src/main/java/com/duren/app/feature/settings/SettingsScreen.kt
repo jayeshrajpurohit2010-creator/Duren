@@ -362,6 +362,7 @@ fun SettingsScreen(
 
         if (showResetDialog) {
             AlertDialog(
+                containerColor = LocalDurenColors.current.GlassStrong,
                 onDismissRequest = { showResetDialog = false },
                 title = { Text("Change password") },
                 text = { Text("We'll email a reset link to ${p.email}. Open it to set a new password.") },
@@ -379,6 +380,7 @@ fun SettingsScreen(
 
         if (passwordResetSent) {
             AlertDialog(
+                containerColor = LocalDurenColors.current.GlassStrong,
                 onDismissRequest = viewModel::acknowledgePasswordReset,
                 title = { Text("Check your inbox") },
                 text = { Text("If ${p.email} is on file, a reset link is on its way. It can take a minute to arrive.") },
@@ -390,6 +392,7 @@ fun SettingsScreen(
 
         if (showDeleteDialog) {
             AlertDialog(
+                containerColor = LocalDurenColors.current.GlassStrong,
                 onDismissRequest = {
                     if (!deleting) {
                         showDeleteDialog = false

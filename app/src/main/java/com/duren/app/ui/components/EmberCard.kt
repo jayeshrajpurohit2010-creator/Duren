@@ -130,6 +130,7 @@ fun EmberCard(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
+            containerColor = LocalDurenColors.current.GlassStrong,
             title = { Text("Let this ember go?") },
             text = { Text("It'll fade now instead of burning out on its own. Can't be undone.") },
             confirmButton = {

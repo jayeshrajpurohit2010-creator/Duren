@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,6 +40,10 @@ import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
+import com.duren.app.ui.components.GlassSurface
+import com.duren.app.ui.components.GlassBackdrop
+import com.duren.app.ui.components.glassTopAppBarColors
+import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
 /** The Signal inbox — echoes, whispers, Nest requests and DMs, newest first. */
@@ -55,7 +60,11 @@ fun SignalScreen(
     // Opening the screen is the "read" action.
     LaunchedEffect(Unit) { viewModel.markAllRead() }
 
+    GlassBackdrop(modifier = Modifier.fillMaxSize()) {
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
                 title = { Text("Signals") },
@@ -63,7 +72,8 @@ fun SignalScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = glassTopAppBarColors()
             )
         }
     ) { padding ->
@@ -82,11 +92,12 @@ fun SignalScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .padding(horizontal = DurenSpacing.space4),
-                verticalArrangement = Arrangement.spacedBy(DurenSpacing.space1)
+                verticalArrangement = Arrangement.spacedBy(DurenSpacing.space2)
             ) {
                 items(signals, key = { it.id }) { signal ->
                     SignalRow(
                         signal = signal,
+                        modifier = Modifier.animateItem(),
                         onClick = {
                             when (signal.type) {
                                 SignalType.Dm -> onOpenChat(signal.fromUserId)
@@ -98,17 +109,22 @@ fun SignalScreen(
             }
         }
     }
+    }
 }
 
 @Composable
-private fun SignalRow(signal: Signal, onClick: () -> Unit) {
+private fun SignalRow(signal: Signal, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val handle = signal.fromProfile?.username?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: "Someone"
 
+    GlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        shape = DurenShapes.medium
+    ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .pressableCard(onClick = onClick)
-            .padding(vertical = DurenSpacing.space2),
+            .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space2),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.size(44.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
@@ -144,6 +160,7 @@ private fun SignalRow(signal: Signal, onClick: () -> Unit) {
                     .background(MaterialTheme.colorScheme.primary)
             )
         }
+    }
     }
 }
 

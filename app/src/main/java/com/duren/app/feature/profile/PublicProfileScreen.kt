@@ -411,6 +411,7 @@ internal fun NoteDialog(
     var text by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = LocalDurenColors.current.GlassStrong,
         title = { Text(title) },
         text = {
             Column {

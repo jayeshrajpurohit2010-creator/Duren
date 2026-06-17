@@ -295,6 +295,7 @@ private fun SmokeSignalDialog(
     var text by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = LocalDurenColors.current.GlassStrong,
         title = { Text("Send up a Smoke Signal") },
         text = {
             Column {

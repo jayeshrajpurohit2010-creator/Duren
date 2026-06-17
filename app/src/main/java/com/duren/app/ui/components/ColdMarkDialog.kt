@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.duren.app.ui.theme.DurenSpacing
+import com.duren.app.ui.theme.LocalDurenColors
 
 private val COLD_MARK_REASONS = listOf(
     "Spam",
@@ -41,6 +42,7 @@ fun ColdMarkDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = LocalDurenColors.current.GlassStrong,
         title = {
             Text(
                 text = "Cold Mark",

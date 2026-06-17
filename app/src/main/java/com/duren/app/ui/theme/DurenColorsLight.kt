@@ -19,6 +19,13 @@ object DurenColorsLight {
     val SurfaceElevated = Color(0xFFF5F5F5)
     val SurfacePressed = Color(0xFFEDEDED)
 
+    // Glassmorphism — light frosted chrome + overlays. The rim is a faint *dark*
+    // edge (not white) so a near-white glass panel still separates from the
+    // near-white background instead of dissolving into it.
+    val Glass = Color(0xFFFFFFFF).copy(alpha = 0.62f)
+    val GlassStrong = Color(0xFFFFFFFF).copy(alpha = 0.85f)
+    val GlassBorder = Color(0xFF0A0A0A).copy(alpha = 0.06f)
+
     // Accents — SAME as dark mode
     val AccentTeal = Color(0xFF2DD4BF)
     val AccentGreen = Color(0xFF10B981)

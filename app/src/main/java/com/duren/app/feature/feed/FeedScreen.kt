@@ -65,6 +65,7 @@ import com.duren.app.ui.components.DurenMasthead
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.components.FloatingEmbers
 import com.duren.app.ui.components.NightBanner
+import com.duren.app.ui.components.glassTopAppBarColors
 import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenSpacing
 import kotlinx.coroutines.delay
@@ -134,7 +135,8 @@ fun FeedScreen(
                                     else LocalDurenColors.current.TextMuted
                         )
                     }
-                }
+                },
+                colors = glassTopAppBarColors()
             )
         }
     ) { innerPadding ->
@@ -243,6 +245,7 @@ fun FeedScreen(
                         ) { ember ->
                             EmberCard(
                                 ember = ember,
+                                modifier = Modifier.animateItem(),
                                 onEcho = { viewModel.echo(ember.id) },
                                 onColdMark = { reason -> viewModel.coldMark(ember.id, reason) },
                                 canDelete = ember.authorId == viewModel.currentUserId,

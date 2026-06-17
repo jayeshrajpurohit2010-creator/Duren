@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,6 +39,10 @@ import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
 import com.duren.app.ui.components.DurenIcon
+import com.duren.app.ui.components.GlassSurface
+import com.duren.app.ui.components.GlassBackdrop
+import com.duren.app.ui.components.glassTopAppBarColors
+import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
 
 private const val DM_LIFESPAN_MS = 48L * 60 * 60 * 1000
@@ -52,7 +57,11 @@ fun ChatListScreen(
 ) {
     val chats by viewModel.chats.collectAsStateWithLifecycle()
 
+    GlassBackdrop(modifier = Modifier.fillMaxSize()) {
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
                 title = { Text("Expiring Embers") },
@@ -60,7 +69,8 @@ fun ChatListScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = glassTopAppBarColors()
             )
         }
     ) { padding ->
@@ -79,27 +89,36 @@ fun ChatListScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .padding(horizontal = DurenSpacing.space4),
-                verticalArrangement = Arrangement.spacedBy(DurenSpacing.space1)
+                verticalArrangement = Arrangement.spacedBy(DurenSpacing.space2)
             ) {
                 items(chats, key = { it.chatId }) { chat ->
-                    ChatRow(chat = chat, onClick = { onOpenChat(chat.otherUserId) })
+                    ChatRow(
+                        chat = chat,
+                        modifier = Modifier.animateItem(),
+                        onClick = { onOpenChat(chat.otherUserId) }
+                    )
                 }
             }
         }
     }
+    }
 }
 
 @Composable
-private fun ChatRow(chat: ChatSummary, onClick: () -> Unit) {
+private fun ChatRow(chat: ChatSummary, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val profile = chat.otherProfile
     val name = profile?.let { it.displayName.ifBlank { it.username } } ?: "Someone"
     val faded = (chat.lastMessageAt?.toDate()?.time ?: 0L) + DM_LIFESPAN_MS < System.currentTimeMillis()
 
+    GlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        shape = DurenShapes.medium
+    ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .pressableCard(onClick = onClick)
-            .padding(vertical = DurenSpacing.space2),
+            .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space2),
         verticalAlignment = Alignment.CenterVertically
     ) {
         DurenAvatar(
@@ -133,5 +152,6 @@ private fun ChatRow(chat: ChatSummary, onClick: () -> Unit) {
                     .background(MaterialTheme.colorScheme.primary)
             )
         }
+    }
     }
 }

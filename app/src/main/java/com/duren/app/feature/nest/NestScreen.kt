@@ -262,6 +262,7 @@ private fun LightLanternDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
+        containerColor = LocalDurenColors.current.GlassStrong,
         title = { Text("Light a lantern") },
         text = {
             Column {
