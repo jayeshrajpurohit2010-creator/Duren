@@ -19,7 +19,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import com.duren.app.ui.theme.DurenColors
+import com.duren.app.ui.theme.LocalDurenColors
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.delay
 
@@ -51,10 +51,11 @@ fun ExpiryTimer(
         }
     }
 
+    val colors = LocalDurenColors.current
     val timerColor = when {
-        remainingSeconds > TWO_HOURS_SECONDS -> DurenColors.TimerNormal
-        remainingSeconds >= THIRTY_MIN_SECONDS -> DurenColors.TimerWarning
-        else -> DurenColors.TimerCritical
+        remainingSeconds > TWO_HOURS_SECONDS -> colors.TimerNormal
+        remainingSeconds >= THIRTY_MIN_SECONDS -> colors.TimerWarning
+        else -> colors.TimerCritical
     }
 
     val label = when {
@@ -68,7 +69,7 @@ fun ExpiryTimer(
             append(label)
         }
         if (extended) {
-            withStyle(SpanStyle(color = DurenColors.TextMuted)) {
+            withStyle(SpanStyle(color = colors.TextMuted)) {
                 append(" · 72h")
             }
         }

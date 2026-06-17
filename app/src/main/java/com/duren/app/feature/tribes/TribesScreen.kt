@@ -220,7 +220,9 @@ private fun TribeTile(
             Spacer(Modifier.height(DurenSpacing.space2))
             Text(
                 text = tribe.name,
-                color = Color.White,
+                // The tile is the tribe's near-black vibe gradient in both themes, so its
+                // text stays light — using the on-dark tokens instead of inverting ones.
+                color = LocalDurenColors.current.OnDarkPrimary,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
                 lineHeight = 18.sp,
@@ -231,7 +233,7 @@ private fun TribeTile(
             if (tribe.vibe.isNotBlank()) {
                 Text(
                     text = tribe.vibe,
-                    color = LocalDurenColors.current.TextMuted,
+                    color = LocalDurenColors.current.OnDarkMuted,
                     fontStyle = FontStyle.Italic,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
@@ -250,7 +252,7 @@ private fun TribeTile(
         ) {
             Text(
                 text = "${tribe.memberCount} souls",
-                color = LocalDurenColors.current.TextSecondary,
+                color = LocalDurenColors.current.OnDarkSecondary,
                 fontSize = 11.sp,
                 maxLines = 1
             )
@@ -265,13 +267,14 @@ private fun JoinPill(isMember: Boolean, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .clip(DurenShapes.pill)
-                .border(1.dp, LocalDurenColors.current.TextMuted.copy(alpha = 0.5f), DurenShapes.pill)
+                // On the dark tile in both themes — keep the outline + label light.
+                .border(1.dp, LocalDurenColors.current.OnDarkMuted.copy(alpha = 0.5f), DurenShapes.pill)
                 .clickable(onClick = onClick)
                 .padding(horizontal = DurenSpacing.space3, vertical = DurenSpacing.space1)
         ) {
             Text(
                 text = "Joined",
-                color = LocalDurenColors.current.TextSecondary,
+                color = LocalDurenColors.current.OnDarkSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )

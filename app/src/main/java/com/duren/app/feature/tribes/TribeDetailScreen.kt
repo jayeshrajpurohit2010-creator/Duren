@@ -282,7 +282,9 @@ private fun TribeDetailHeader(
                     text = tribe.name,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = LocalDurenColors.current.TextPrimary,
+                    // The header sits on the tribe's near-black vibe gradient (dark in
+                    // both themes), so its text stays light — not the inverting TextPrimary.
+                    color = LocalDurenColors.current.OnDarkPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 // See The Fire — the flame grows with the last half hour of embers.
@@ -335,7 +337,7 @@ private fun TribeDetailHeader(
                 Text(
                     text = "🎟 Invite code ${tribe.inviteCode} · tap to copy",
                     style = MaterialTheme.typography.labelSmall,
-                    color = LocalDurenColors.current.TextSecondary,
+                    color = LocalDurenColors.current.OnDarkSecondary,
                     modifier = Modifier.clickable {
                         clipboard.setText(AnnotatedString(tribe.inviteCode))
                     }
@@ -347,7 +349,7 @@ private fun TribeDetailHeader(
                 Text(
                     text = tribe.description,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = LocalDurenColors.current.OnDarkSecondary,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -363,7 +365,7 @@ private fun TribeDetailHeader(
                     text = "${tribe.memberCount} around the fire" +
                         if (activity > 0) " · $activity just now" else "",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = LocalDurenColors.current.OnDarkSecondary
                 )
 
                 if (tribe.isMember) {
