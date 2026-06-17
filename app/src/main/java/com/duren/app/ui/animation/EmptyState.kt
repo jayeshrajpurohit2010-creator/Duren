@@ -19,7 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenSpacing
 
 /**
@@ -30,7 +31,11 @@ import com.duren.app.ui.theme.DurenSpacing
 fun EmptyState(
     title: String,
     body: String? = null,
-    emoji: String = "🏕️",
+    // The brand mark for this empty state — a hand-drawn glyph, never an emoji.
+    // Defaults to the Ember. (The old `emoji` param is kept as a no-op so any
+    // straggler caller still compiles; we always draw the vector glyph.)
+    icon: DurenIcon? = null,
+    emoji: String = "",
     modifier: Modifier = Modifier
 ) {
     val transition = rememberInfiniteTransition(label = "empty_flicker")
@@ -51,9 +56,10 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = emoji,
-            fontSize = 56.sp,
+        DurenIcon(
+            icon = icon ?: DurenIcon.Ember,
+            size = 56.dp,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.alpha(flicker)
         )
         Text(

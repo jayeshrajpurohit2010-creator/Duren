@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -139,7 +141,7 @@ fun NestScreen(
                         } else {
                             "You haven't lit any lanterns." to "Set one adrift and let it wander."
                         }
-                        EmptyState(title = title, body = body, emoji = "🏮")
+                        EmptyState(title = title, body = body, icon = DurenIcon.Lantern)
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -200,11 +202,19 @@ private fun LanternCard(
                 .padding(DurenSpacing.space4)
         ) {
             // Soft "found in the dark" framing — never reveals the author.
-            Text(
-                text = if (mine) "🏮 your lantern" else "🏮 found in the dark",
-                style = MaterialTheme.typography.labelSmall,
-                color = LocalDurenColors.current.TextMuted
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DurenIcon(
+                    DurenIcon.Lantern,
+                    size = 14.dp,
+                    tint = LocalDurenColors.current.TextMuted
+                )
+                Spacer(Modifier.width(DurenSpacing.space1))
+                Text(
+                    text = if (mine) "your lantern" else "found in the dark",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = LocalDurenColors.current.TextMuted
+                )
+            }
 
             Spacer(Modifier.height(DurenSpacing.space2))
 
@@ -222,11 +232,19 @@ private fun LanternCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 ExpiryTimer(expiresAt = lantern.expiresAt, extended = false)
-                Text(
-                    text = "🏮 found by ${lantern.foundCount}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = LocalDurenColors.current.TextMuted
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DurenIcon(
+                        DurenIcon.Lantern,
+                        size = 14.dp,
+                        tint = LocalDurenColors.current.TextMuted
+                    )
+                    Spacer(Modifier.width(DurenSpacing.space1))
+                    Text(
+                        text = "found by ${lantern.foundCount}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = LocalDurenColors.current.TextMuted
+                    )
+                }
             }
         }
     }

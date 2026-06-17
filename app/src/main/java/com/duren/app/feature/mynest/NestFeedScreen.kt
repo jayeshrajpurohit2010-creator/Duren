@@ -50,6 +50,7 @@ import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
+import com.duren.app.ui.theme.LocalDurenColors
 
 /**
  * The Nest — your people and what they're sharing. (Lanterns moved to their own
@@ -98,8 +99,12 @@ fun NestFeedScreen(
                 title = { Text("The Nest") },
                 actions = {
                     // Smoke Signal (F30): one broadcast to the whole Nest, once a week.
-                    IconButton(onClick = { showSmokeDialog = true }) { Text("💨") }
-                    IconButton(onClick = onOpenLanterns) { Text("🏮") }
+                    IconButton(onClick = { showSmokeDialog = true }) {
+                        DurenIcon(DurenIcon.Smoke, size = 24.dp)
+                    }
+                    IconButton(onClick = onOpenLanterns) {
+                        DurenIcon(DurenIcon.Lantern, size = 24.dp)
+                    }
                     IconButton(onClick = onOpenMessages) {
                         DurenIcon(DurenIcon.Whisper, size = 22.dp)
                     }
@@ -221,7 +226,11 @@ private fun EmptyNest(onFindPeople: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "🪺", style = MaterialTheme.typography.displaySmall)
+        DurenIcon(
+            DurenIcon.Nest,
+            size = 40.dp,
+            tint = LocalDurenColors.current.TextMuted
+        )
         Spacer(Modifier.height(DurenSpacing.space3))
         Text(
             text = "Your nest is empty.",
@@ -254,12 +263,20 @@ private fun SmokeSignalCard(
         tonalElevation = 3.dp
     ) {
         Column(Modifier.fillMaxWidth().padding(DurenSpacing.space3)) {
-            Text(
-                text = "💨 Smoke Signal from ${signal.fromName.ifBlank { "A soul" }}",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DurenIcon(
+                    DurenIcon.Smoke,
+                    size = 16.dp,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(DurenSpacing.space1))
+                Text(
+                    text = "Smoke Signal from ${signal.fromName.ifBlank { "A soul" }}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             Spacer(Modifier.height(DurenSpacing.space1))
             Text(
                 text = signal.text,
@@ -317,7 +334,11 @@ private fun EmptyFeedNotice(title: String, body: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "🔥", style = MaterialTheme.typography.displaySmall)
+        DurenIcon(
+            DurenIcon.Ember,
+            size = 40.dp,
+            tint = LocalDurenColors.current.TextMuted
+        )
         Spacer(Modifier.height(DurenSpacing.space3))
         Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(DurenSpacing.space1))

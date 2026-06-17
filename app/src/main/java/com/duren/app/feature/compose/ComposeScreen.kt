@@ -443,8 +443,8 @@ fun ComposeScreen(
                 Text(
                     text = when {
                         isPosting -> "Releasing…"
-                        poll -> "Open this poll 🔥"
-                        else -> "Release this ember 🔥"
+                        poll -> "Open this poll"
+                        else -> "Release this ember"
                     },
                     fontWeight = FontWeight.SemiBold
                 )
@@ -546,7 +546,7 @@ private fun EmberReleaseOverlay(onDone: () -> Unit) {
             )
             Spacer(Modifier.height(DurenSpacing.space6))
             Text(
-                text = "Your ember is burning 🔥",
+                text = "Your ember is burning",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.TextPrimary,
@@ -610,9 +610,10 @@ private fun DeadHoursRest() {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(horizontal = DurenSpacing.space6)
         ) {
-            Text(
-                text = "🌙",
-                fontSize = 64.sp,
+            DurenIcon(
+                DurenIcon.Moon,
+                size = 64.dp,
+                tint = RestGlow,
                 modifier = Modifier
                     .scale(0.92f + 0.08f * glow)
                     .alpha(0.65f + 0.35f * glow)

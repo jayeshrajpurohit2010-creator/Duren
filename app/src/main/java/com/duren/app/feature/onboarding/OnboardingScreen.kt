@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.tribe.model.Tribe
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.FloatingEmbers
 import com.duren.app.ui.theme.DurenShapes
 import com.duren.app.ui.theme.DurenSpacing
@@ -161,8 +162,8 @@ fun OnboardingScreen(
                     text = when {
                         finishing -> "Lighting your fires…"
                         n == 0 -> "Skip for now"
-                        n == 1 -> "Enter with 1 fire 🔥"
-                        else -> "Enter with $n fires 🔥"
+                        n == 1 -> "Enter with 1 fire"
+                        else -> "Enter with $n fires"
                     },
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp
@@ -201,7 +202,12 @@ private fun TribePickCard(
                 .background(colors.BackgroundSecondary),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = tribe.emoji.ifBlank { "🔥" }, fontSize = 22.sp)
+            Text(
+                text = tribe.name.take(1).uppercase().ifBlank { "?" },
+                color = colors.AccentTeal,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
         Spacer(Modifier.size(DurenSpacing.space3))
         Column(modifier = Modifier.weight(1f)) {
@@ -236,7 +242,7 @@ private fun TribePickCard(
             contentAlignment = Alignment.Center
         ) {
             if (selected) {
-                Text(text = "✓", color = colors.OnAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                DurenIcon(icon = DurenIcon.Check, size = 14.dp, tint = colors.OnAccent)
             }
         }
     }

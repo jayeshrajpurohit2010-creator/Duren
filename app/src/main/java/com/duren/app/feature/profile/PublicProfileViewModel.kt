@@ -76,7 +76,7 @@ class PublicProfileViewModel @Inject constructor(
     /** Warm their hearth (F26) — a private postcard only they will read. */
     fun sendHearth(text: String) = viewModelScope.launch {
         _nudgeMessage.value = hearthRepository.send(userId, text).fold(
-            onSuccess = { "You warmed their hearth 🔥" },
+            onSuccess = { "You warmed their hearth" },
             onFailure = { "The hearth wouldn't catch. Try again." }
         )
     }
@@ -84,7 +84,7 @@ class PublicProfileViewModel @Inject constructor(
     /** Leave a testimonial on their presence (F27). */
     fun writeTestimonial(text: String) = viewModelScope.launch {
         _nudgeMessage.value = testimonialRepository.write(userId, text).fold(
-            onSuccess = { "Your words are on their presence ✨" },
+            onSuccess = { "Your words are on their presence" },
             onFailure = { "That didn't land. Try again." }
         )
     }
@@ -98,7 +98,7 @@ class PublicProfileViewModel @Inject constructor(
     fun nudge() = viewModelScope.launch {
         val name = profile.value?.username?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: "them"
         _nudgeMessage.value = when (signalRepository.nudge(userId)) {
-            NudgeOutcome.Sent -> "You nudged $name 👀"
+            NudgeOutcome.Sent -> "You nudged $name"
             NudgeOutcome.LimitReached -> "You're out of nudges for tonight."
             NudgeOutcome.Failed -> "Couldn't nudge right now."
         }

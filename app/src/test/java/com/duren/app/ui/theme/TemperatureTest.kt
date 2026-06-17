@@ -47,10 +47,8 @@ class TemperatureTest {
     }
 
     @Test
-    fun `every band has its own label and emoji`() {
+    fun `every band has its own label`() {
         val labels = Temperature.entries.map { it.label }.toSet()
-        val emojis = Temperature.entries.map { it.emoji }.toSet()
         assertEquals(Temperature.entries.size, labels.size)
-        assertEquals(Temperature.entries.size, emojis.size)
     }
 }

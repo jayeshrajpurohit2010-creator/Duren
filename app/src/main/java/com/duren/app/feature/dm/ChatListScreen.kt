@@ -37,6 +37,7 @@ import com.duren.app.data.dm.model.ChatSummary
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenSpacing
 
 private const val DM_LIFESPAN_MS = 48L * 60 * 60 * 1000
@@ -67,7 +68,7 @@ fun ChatListScreen(
             EmptyState(
                 title = "Whisper to start a fire.",
                 body = "Message someone in your Nest — it fades in 48 hours.",
-                emoji = "🤫",
+                icon = DurenIcon.Mask,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)

@@ -191,29 +191,14 @@ fun EmberCard(
                 horizontalArrangement = Arrangement.spacedBy(DurenSpacing.space3)
             ) {
                 if (ember.pinnedNow()) {
-                    Text(
-                        text = "📌 Floating Lantern",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = LocalDurenColors.current.AccentTeal
-                    )
+                    MarkerLabel(DurenIcon.Pin, "Floating Lantern", LocalDurenColors.current.AccentTeal)
                 }
                 if (ember.isWisdom) {
-                    Text(
-                        text = "✨ Ember of Wisdom",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = WisdomGold
-                    )
+                    MarkerLabel(DurenIcon.Spark, "Ember of Wisdom", WisdomGold)
                 }
                 if (ember.isFinal) {
                     // A goodbye left behind on the way out of a tribe (F35).
-                    Text(
-                        text = "🕯️ Final Ember",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = LocalDurenColors.current.TextSecondary
-                    )
+                    MarkerLabel(DurenIcon.Ember, "Final Ember", LocalDurenColors.current.TextSecondary)
                 }
                 if (ember.subEmberName.isNotBlank()) {
                     // The topic thread it lives in (F36).
@@ -242,7 +227,11 @@ fun EmberCard(
                         .background(LocalDurenColors.current.SurfaceElevated),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "🎭", fontSize = 14.sp)
+                    DurenIcon(
+                        icon = DurenIcon.Mask,
+                        size = 16.dp,
+                        tint = LocalDurenColors.current.TextSecondary
+                    )
                 }
             } else {
                 DurenAvatar(
@@ -307,12 +296,20 @@ fun EmberCard(
                 )
                 if (fragmentHeld) {
                     Spacer(modifier = Modifier.height(DurenSpacing.space2))
-                    Text(
-                        text = "🔒 Echo to read the rest",
-                        fontSize = 13.sp,
-                        fontStyle = FontStyle.Italic,
-                        color = LocalDurenColors.current.AccentTeal
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        DurenIcon(
+                            icon = DurenIcon.Lock,
+                            size = 13.dp,
+                            tint = LocalDurenColors.current.AccentTeal
+                        )
+                        Spacer(modifier = Modifier.width(DurenSpacing.space1))
+                        Text(
+                            text = "Echo to read the rest",
+                            fontSize = 13.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = LocalDurenColors.current.AccentTeal
+                        )
+                    }
                 }
             }
         }
@@ -366,7 +363,7 @@ fun EmberCard(
                     if (ember.isFinal) {
                         // Final Embers cannot be echoed (F35) — the goodbye just rests.
                         Text(
-                            text = "🕯️ let it rest",
+                            text = "let it rest",
                             fontSize = 12.sp,
                             color = LocalDurenColors.current.TextMuted
                         )
@@ -404,7 +401,11 @@ fun EmberCard(
                             indication = null
                         ) { showWhispers = !showWhispers }
                     ) {
-                        Text(text = "💬", fontSize = 13.sp)
+                        DurenIcon(
+                            icon = DurenIcon.Whisper,
+                            size = 14.dp,
+                            tint = LocalDurenColors.current.TextMuted
+                        )
                         Spacer(modifier = Modifier.width(DurenSpacing.space1))
                         Text(
                             text = "${ember.whisperCount} whispers",
@@ -429,7 +430,12 @@ fun EmberCard(
                                 ) { kindledLocally = true; onKindle?.invoke() }
                             } else Modifier
                         ) {
-                            Text(text = "🔥", fontSize = 13.sp)
+                            DurenIcon(
+                                icon = DurenIcon.Ember,
+                                size = 14.dp,
+                                tint = if (kindledLocally) LocalDurenColors.current.AccentTeal
+                                       else LocalDurenColors.current.TextMuted
+                            )
                             Spacer(modifier = Modifier.width(DurenSpacing.space1))
                             Text(
                                 text = "$kindleTotal",
@@ -470,14 +476,14 @@ fun EmberCard(
                             // Keeper tools — only in a tribe the viewer keeps.
                             if (canModerate) {
                                 DropdownMenuItem(
-                                    text = { Text(if (ember.pinnedNow()) "Unpin from tribe" else "📌 Pin to tribe") },
+                                    text = { Text(if (ember.pinnedNow()) "Unpin from tribe" else "Pin to tribe") },
                                     onClick = {
                                         showMenu = false
                                         onTogglePin()
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(if (ember.isWisdom) "Remove wisdom" else "✨ Mark as wisdom") },
+                                    text = { Text(if (ember.isWisdom) "Remove wisdom" else "Mark as wisdom") },
                                     onClick = {
                                         showMenu = false
                                         onToggleWisdom()
@@ -544,6 +550,21 @@ private fun BurningBar(
 
 /** Gold for Keeper-blessed embers — the Design System's Drum-Circle gold (#FFD700). */
 private val WisdomGold = Color(0xFFFFD700)
+
+/** A small keeper/marker label — a hand-drawn glyph + a word, never an emoji. */
+@Composable
+private fun MarkerLabel(icon: DurenIcon, text: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        DurenIcon(icon = icon, size = 12.dp, tint = color)
+        Spacer(modifier = Modifier.width(DurenSpacing.space1))
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = color
+        )
+    }
+}
 
 /**
  * Quick Poll (F18). The ember body is the question; this is the answer. Before you

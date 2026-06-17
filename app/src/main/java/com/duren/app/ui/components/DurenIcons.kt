@@ -33,7 +33,12 @@ import androidx.compose.ui.unit.dp
 enum class DurenIcon {
     Ember, EmberFilled, Reply, Whisper, More, Mask, Photo, Mic, Video, Plus,
     Lock, Check, Chevron, Bell, Search, Send, Tribe, Nest, Presence, Lantern,
-    Settings, Crown
+    Settings, Crown,
+    // Added for the no-emoji migration — same hand-drawn line language, so the app
+    // reads as designed rather than emoji-littered. Map: Moon=Dead Hours/away,
+    // Eye=Nudge, Feather=Dove Mode, Sun=Morning/Drum, Frost=Cold, Smoke=Smoke Signal,
+    // Pin=Floating Lantern/Bulletin, Spark=Wisdom/Mutual Spark, Close=dismiss.
+    Moon, Eye, Feather, Sun, Frost, Smoke, Pin, Spark, Close
 }
 
 @Composable
@@ -175,4 +180,31 @@ private fun shapesFor(icon: DurenIcon): List<IconShape> = when (icon) {
         )
     )
     DurenIcon.Crown -> listOf(P("M3 8l4 4 5-6 5 6 4-4-1 11H4L3 8z", sw = 1.4f))
+    DurenIcon.Moon -> listOf(P("M15 3A9 9 0 1 0 15 21 7 7 0 0 1 15 3z", fill = true))
+    DurenIcon.Eye -> listOf(
+        P("M2 12C4.5 6.8 8 4.5 12 4.5s7.5 2.3 10 7.5c-2.5 5.2-6 7.5-10 7.5S4.5 17.2 2 12z", sw = 1.6f),
+        C(12f, 12f, 2.4f, fill = true)
+    )
+    DurenIcon.Feather -> listOf(
+        P("M5 19C5 11 11 5 19 5c0 8-6 14-14 14z", sw = 1.6f, cap = StrokeCap.Round),
+        P("M5 19l9-9", sw = 1.4f, cap = StrokeCap.Round)
+    )
+    DurenIcon.Sun -> listOf(
+        C(12f, 12f, 4f, sw = 1.6f),
+        P(
+            "M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M5 5l1.8 1.8M17.2 17.2L19 19M19 5l-1.8 1.8M6.8 17.2L5 19",
+            sw = 1.6f, cap = StrokeCap.Round
+        )
+    )
+    DurenIcon.Frost -> listOf(P("M12 2v20M3.5 7L20.5 17M20.5 7L3.5 17", sw = 1.6f, cap = StrokeCap.Round))
+    DurenIcon.Smoke -> listOf(
+        P("M9 21c0-3 3-3 3-6s-3-3-3-6", sw = 1.6f, cap = StrokeCap.Round),
+        P("M15 19c0-2.2 2.2-2.2 2.2-4.4S15 12.2 15 10", sw = 1.4f, cap = StrokeCap.Round)
+    )
+    DurenIcon.Pin -> listOf(
+        P("M9 3h6l-1 6 3 3.5H7l3-3.5-1-6z", sw = 1.5f),
+        P("M12 12.5V21", sw = 1.5f, cap = StrokeCap.Round)
+    )
+    DurenIcon.Spark -> listOf(P("M12 3l1.9 6.1L20 11l-6.1 1.9L12 19l-1.9-6.1L4 11l6.1-1.9z", fill = true))
+    DurenIcon.Close -> listOf(P("M6 6l12 12M18 6L6 18", sw = 2f, cap = StrokeCap.Round))
 }

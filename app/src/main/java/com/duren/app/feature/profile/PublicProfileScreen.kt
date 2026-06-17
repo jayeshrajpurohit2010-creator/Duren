@@ -51,6 +51,7 @@ import com.duren.app.data.mood.model.Mood
 import com.duren.app.data.nest.model.NestRelation
 import com.duren.app.data.testimonial.model.Testimonial
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.components.ProfileBanner
@@ -89,11 +90,19 @@ private fun NestAction(
             ) { Text("Decline") }
         }
 
-        NestRelation.Member -> Text(
-            text = "✓ In your Nest",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
+        NestRelation.Member -> Row(verticalAlignment = Alignment.CenterVertically) {
+            DurenIcon(
+                DurenIcon.Check,
+                size = 18.dp,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(DurenSpacing.space1))
+            Text(
+                text = "In your Nest",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
 
@@ -226,21 +235,37 @@ fun PublicProfileScreen(
                         // Banked away-note, if they've stepped out (F11).
                         if (p.isBanked) {
                             Spacer(Modifier.height(DurenSpacing.space2))
-                            Text(
-                                text = "💤 ${p.bankedStatus}",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontStyle = FontStyle.Italic,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                DurenIcon(
+                                    DurenIcon.Moon,
+                                    size = 14.dp,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(DurenSpacing.space1))
+                                Text(
+                                    text = p.bankedStatus,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontStyle = FontStyle.Italic,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         // Mutual Spark (F25) — you echoed each other within 24h.
                         if (mutualSpark) {
                             Spacer(Modifier.height(DurenSpacing.space2))
-                            Text(
-                                text = "✨ Mutual Spark — your fires answered each other",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = LocalDurenColors.current.AccentTeal
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                DurenIcon(
+                                    DurenIcon.Spark,
+                                    size = 14.dp,
+                                    tint = LocalDurenColors.current.AccentTeal
+                                )
+                                Spacer(Modifier.width(DurenSpacing.space1))
+                                Text(
+                                    text = "Mutual Spark — your fires answered each other",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = LocalDurenColors.current.AccentTeal
+                                )
+                            }
                         }
                     }
                     Spacer(Modifier.height(DurenSpacing.space4))
@@ -263,12 +288,12 @@ fun PublicProfileScreen(
                             OutlinedButton(
                                 onClick = { showHearthDialog = true },
                                 modifier = Modifier.weight(1f).height(48.dp)
-                            ) { Text("Warm hearth 🔥", maxLines = 1) }
+                            ) { Text("Warm hearth", maxLines = 1) }
                             Spacer(Modifier.width(DurenSpacing.space3))
                             OutlinedButton(
                                 onClick = { showTestimonialDialog = true },
                                 modifier = Modifier.weight(1f).height(48.dp)
-                            ) { Text("Testimonial ✨", maxLines = 1) }
+                            ) { Text("Testimonial", maxLines = 1) }
                         }
                     }
                     // Nudge — a silent "I see you". Available for anyone but yourself.
@@ -277,7 +302,7 @@ fun PublicProfileScreen(
                         OutlinedButton(
                             onClick = viewModel::nudge,
                             modifier = Modifier.fillMaxWidth().height(48.dp)
-                        ) { Text("Nudge 👀") }
+                        ) { Text("Nudge") }
                     }
                     // What the Nest says — 30d testimonials (F27). Only shown when there are any.
                     if (testimonials.isNotEmpty()) {

@@ -72,6 +72,7 @@ import com.duren.app.data.tribe.model.SubEmber
 import com.duren.app.data.tribe.model.Tribe
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.ShimmerBox
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.components.EmberCard
 import com.duren.app.ui.theme.LocalDurenColors
 import com.duren.app.ui.theme.DurenShapes
@@ -217,7 +218,7 @@ fun TribeDetailScreen(
                             EmptyState(
                                 title = "No embers here yet.",
                                 body = "Be the first to light this fire.",
-                                emoji = "🔥",
+                                icon = DurenIcon.Ember,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(280.dp)
@@ -265,21 +266,25 @@ private fun TribeDetailHeader(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (tribe.emoji.isNotBlank()) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(accent.copy(alpha = 0.30f), Color.Transparent)
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = tribe.emoji, fontSize = 24.sp)
-                    }
-                    Spacer(Modifier.width(DurenSpacing.space2))
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(accent.copy(alpha = 0.30f), Color.Transparent)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = tribe.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = LocalDurenColors.current.TextPrimary
+                    )
                 }
+                Spacer(Modifier.width(DurenSpacing.space2))
                 Text(
                     text = tribe.name,
                     style = MaterialTheme.typography.titleLarge,
@@ -323,11 +328,19 @@ private fun TribeDetailHeader(
             // the pin + wisdom tools on every ember here.
             if (isKeeper) {
                 Spacer(Modifier.height(DurenSpacing.space2))
-                Text(
-                    text = "🔑 You keep this fire",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = LocalDurenColors.current.AccentTeal
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DurenIcon(
+                        icon = DurenIcon.Crown,
+                        size = 14.dp,
+                        tint = LocalDurenColors.current.AccentTeal
+                    )
+                    Spacer(Modifier.width(DurenSpacing.space1))
+                    Text(
+                        text = "You keep this fire",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = LocalDurenColors.current.AccentTeal
+                    )
+                }
             }
 
             // Pass the ember — invite a friend to this fire through the system share
@@ -337,22 +350,32 @@ private fun TribeDetailHeader(
             if (tribe.isMember) {
                 val context = LocalContext.current
                 Spacer(Modifier.height(DurenSpacing.space2))
-                Text(
-                    text = "🔥 Pass the ember · invite a friend",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = LocalDurenColors.current.AccentTeal,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable {
                         val share = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(
                                 Intent.EXTRA_TEXT,
-                                "Come sit by the fire at \"${tribe.name}\" on Duren tonight 🔥 " +
+                                "Come sit by the fire at \"${tribe.name}\" on Duren tonight. " +
                                     "Find the campfire by name."
                             )
                         }
                         context.startActivity(Intent.createChooser(share, "Pass the ember"))
                     }
-                )
+                ) {
+                    DurenIcon(
+                        icon = DurenIcon.Ember,
+                        size = 14.dp,
+                        tint = LocalDurenColors.current.AccentTeal
+                    )
+                    Spacer(Modifier.width(DurenSpacing.space1))
+                    Text(
+                        text = "Pass the ember · invite a friend",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = LocalDurenColors.current.AccentTeal
+                    )
+                }
             }
 
             if (tribe.description.isNotBlank()) {
@@ -416,7 +439,12 @@ private fun SeeTheFire(activity: Int) {
         ),
         label = "flame"
     )
-    Text(text = "🔥", fontSize = 26.sp, modifier = Modifier.scale(scale))
+    DurenIcon(
+        icon = DurenIcon.Ember,
+        size = 26.dp,
+        tint = LocalDurenColors.current.TempBlazing,
+        modifier = Modifier.scale(scale)
+    )
 }
 
 /**
@@ -651,7 +679,11 @@ private fun BulletinCard(
             .padding(DurenSpacing.space3)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = bulletin.emoji.ifBlank { "📌" }, fontSize = 16.sp)
+            DurenIcon(
+                icon = DurenIcon.Pin,
+                size = 16.dp,
+                tint = LocalDurenColors.current.AccentTeal
+            )
             Spacer(Modifier.width(DurenSpacing.space2))
             Text(
                 text = bulletin.title,
@@ -663,10 +695,10 @@ private fun BulletinCard(
                 modifier = Modifier.weight(1f)
             )
             if (canDelete) {
-                Text(
-                    text = "✕",
-                    fontSize = 14.sp,
-                    color = LocalDurenColors.current.TextSecondary,
+                DurenIcon(
+                    icon = DurenIcon.Close,
+                    size = 14.dp,
+                    tint = LocalDurenColors.current.TextSecondary,
                     modifier = Modifier.clickable { onDelete() }
                 )
             }
@@ -697,7 +729,11 @@ private fun AddBulletinTile(onClick: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "📌", fontSize = 20.sp)
+        DurenIcon(
+            icon = DurenIcon.Pin,
+            size = 20.dp,
+            tint = LocalDurenColors.current.AccentTeal
+        )
         Spacer(Modifier.height(DurenSpacing.space1))
         Text(
             text = "Pin a notice",
@@ -714,21 +750,12 @@ private fun AddBulletinDialog(
 ) {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
-    var emoji by remember { mutableStateOf("📌") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Pin a notice") },
         text = {
             Column {
-                OutlinedTextField(
-                    value = emoji,
-                    onValueChange = { emoji = it.take(2) },
-                    label = { Text("Emoji") },
-                    singleLine = true,
-                    modifier = Modifier.width(96.dp)
-                )
-                Spacer(Modifier.height(DurenSpacing.space2))
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it.take(60) },
@@ -747,7 +774,7 @@ private fun AddBulletinDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(title, body, emoji) },
+                onClick = { onConfirm(title, body, "") },
                 enabled = title.isNotBlank()
             ) {
                 Text("Pin it")

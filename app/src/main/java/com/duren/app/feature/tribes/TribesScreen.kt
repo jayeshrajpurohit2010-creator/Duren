@@ -146,7 +146,7 @@ fun TribesScreen(
                 EmptyState(
                     title = "Find your clearing.",
                     body = "Join a tribe — or start the first fire.",
-                    emoji = "🌲",
+                    icon = DurenIcon.Tribe,
                     modifier = Modifier.padding(padding)
                 )
             }
@@ -213,7 +213,12 @@ private fun TribeTile(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = tribe.emoji.ifBlank { "🔥" }, fontSize = 34.sp)
+                Text(
+                    text = tribe.name.take(1).uppercase().ifBlank { "?" },
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp
+                )
             }
             Spacer(Modifier.height(DurenSpacing.space2))
             Text(

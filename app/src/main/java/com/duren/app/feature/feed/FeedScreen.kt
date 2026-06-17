@@ -1,7 +1,13 @@
 package com.duren.app.feature.feed
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,13 +45,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.core.time.NightEconomy
@@ -119,10 +127,10 @@ fun FeedScreen(
                     // Dove Mode (F32) — the one control that survives, so you can always
                     // come back. Teal once the campfire's gone private.
                     IconButton(onClick = onToggleDove) {
-                        Text(
-                            text = "🕊",
-                            fontSize = 18.sp,
-                            color = if (doveMode) LocalDurenColors.current.AccentTeal
+                        DurenIcon(
+                            DurenIcon.Feather,
+                            size = 18.dp,
+                            tint = if (doveMode) LocalDurenColors.current.AccentTeal
                                     else LocalDurenColors.current.TextMuted
                         )
                     }
@@ -184,20 +192,21 @@ fun FeedScreen(
 
                 is FeedUiState.Empty -> {
                     // Empty copy follows the active tab so each surface reads true.
-                    val (title, body, emoji) = when (tab) {
+                    // The third value carries the surface's hand-drawn DurenIcon (no emoji).
+                    val (title, body, icon) = when (tab) {
                         FeedTab.Campfire ->
-                            Triple("The clearing is still.", "Be the first ember.", "🏕️")
+                            Triple("The clearing is still.", "Be the first ember.", DurenIcon.Tribe)
                         FeedTab.BurningNow ->
-                            Triple("Nothing's caught fire yet.", "Echo a post to fan the flames.", "🔥")
+                            Triple("Nothing's caught fire yet.", "Echo a post to fan the flames.", DurenIcon.Ember)
                         FeedTab.AboutToFade ->
-                            Triple("Nothing's fading right now.", "Posts appear here as they near their last hour.", "⏳")
+                            Triple("Nothing's fading right now.", "Posts appear here as they near their last hour.", DurenIcon.Smoke)
                         FeedTab.ColdEmbers ->
-                            Triple("No cold embers.", "Quiet, un-echoed posts gather here.", "❄️")
+                            Triple("No cold embers.", "Quiet, un-echoed posts gather here.", DurenIcon.Frost)
                     }
-                    EmptyState(
+                    FeedEmptyState(
                         title = title,
                         body = body,
-                        emoji = emoji,
+                        icon = icon,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -246,6 +255,60 @@ fun FeedScreen(
                 }
             }
         }
+        }
+    }
+}
+
+/**
+ * A10 — the feed's empty state. The same brand-voice copy and gentle alpha flicker
+ * as [EmptyState], but headed by the surface's hand-drawn [DurenIcon] instead of an
+ * emoji, so each empty surface reads as designed rather than emoji-littered.
+ */
+@Composable
+private fun FeedEmptyState(
+    title: String,
+    body: String?,
+    icon: DurenIcon,
+    modifier: Modifier = Modifier
+) {
+    val transition = rememberInfiniteTransition(label = "empty_flicker")
+    val flicker by transition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "empty_alpha"
+    )
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(DurenSpacing.space6),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        DurenIcon(
+            icon,
+            size = 56.dp,
+            tint = LocalDurenColors.current.TextMuted,
+            modifier = Modifier.alpha(flicker)
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = DurenSpacing.space4)
+        )
+        if (body != null) {
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = LocalDurenColors.current.TextSecondary,
+                modifier = Modifier.padding(top = DurenSpacing.space2)
+            )
         }
     }
 }

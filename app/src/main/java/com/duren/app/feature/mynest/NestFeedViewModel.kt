@@ -90,7 +90,7 @@ class NestFeedViewModel @Inject constructor(
     /** Send one signal up to the whole Nest — rationed to one a week (F30). */
     fun sendSmokeSignal(text: String) = viewModelScope.launch {
         _smokeMessage.value = when (smokeSignalRepository.send(text)) {
-            SmokeOutcome.Sent -> "Your smoke is rising 💨"
+            SmokeOutcome.Sent -> "Your smoke is rising"
             SmokeOutcome.OncePerWeek -> "One signal a week — yours is still in the sky."
             SmokeOutcome.EmptyNest -> "Your Nest is empty. There's no one to signal."
             SmokeOutcome.Failed -> "The smoke wouldn't rise. Try again."

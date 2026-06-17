@@ -35,6 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duren.app.data.ember.model.Whisper
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenSpacing
 
 /**
@@ -116,10 +117,10 @@ fun WhisperThread(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
-                Text(
-                    text = "✕",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                DurenIcon(
+                    icon = DurenIcon.Close,
+                    size = 14.dp,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clickable { replyTarget = null }
                 )
             }
@@ -139,11 +140,19 @@ fun WhisperThread(
         ) {
             if (forceAnonymous) {
                 // Locked — a confession keeps every whisperer faceless.
-                Text(
-                    text = "🎭 Whispers here stay anonymous",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DurenIcon(
+                        icon = DurenIcon.Mask,
+                        size = 14.dp,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(DurenSpacing.space1))
+                    Text(
+                        text = "Whispers here stay anonymous",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
                 FilterChip(
                     selected = anonymous,

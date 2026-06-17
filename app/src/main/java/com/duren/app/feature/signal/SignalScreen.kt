@@ -38,6 +38,7 @@ import com.duren.app.data.signal.model.SignalType
 import com.duren.app.ui.animation.EmptyState
 import com.duren.app.ui.animation.pressableCard
 import com.duren.app.ui.components.DurenAvatar
+import com.duren.app.ui.components.DurenIcon
 import com.duren.app.ui.theme.DurenSpacing
 
 /** The Signal inbox — echoes, whispers, Nest requests and DMs, newest first. */
@@ -70,7 +71,7 @@ fun SignalScreen(
             EmptyState(
                 title = "All quiet.",
                 body = "Embers are warm.",
-                emoji = "✨",
+                icon = DurenIcon.Spark,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -153,10 +154,10 @@ private fun verbFor(type: SignalType): String = when (type) {
     SignalType.Whisper -> "whispered on your ember"
     SignalType.Reply -> "replied to your whisper"
     SignalType.Dm -> "sent you an ember"
-    SignalType.Nudge -> "nudged you tonight 👀"
-    SignalType.MutualSpark -> "sparked with you — you echoed each other ✨"
-    SignalType.Hearth -> "warmed your hearth 🔥"
+    SignalType.Nudge -> "nudged you tonight"
+    SignalType.MutualSpark -> "sparked with you — you echoed each other"
+    SignalType.Hearth -> "warmed your hearth"
     SignalType.Testimonial -> "left a testimonial on your presence"
-    SignalType.SmokeSignal -> "sent up a smoke signal 💨"
+    SignalType.SmokeSignal -> "sent up a smoke signal"
     SignalType.Unknown -> "did something"
 }

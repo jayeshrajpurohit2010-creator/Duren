@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -252,11 +253,19 @@ fun ProfileScreen(
                                         color = LocalDurenColors.current.TextPrimary
                                     )
                                     Spacer(Modifier.height(DurenSpacing.space1))
-                                    Text(
-                                        text = "🔥 ${h.senderName.ifBlank { "A soul" }} warmed your hearth",
-                                        fontSize = 11.sp,
-                                        color = LocalDurenColors.current.TextMuted
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        DurenIcon(
+                                            DurenIcon.Ember,
+                                            size = 12.dp,
+                                            tint = LocalDurenColors.current.TextMuted
+                                        )
+                                        Spacer(Modifier.width(DurenSpacing.space1))
+                                        Text(
+                                            text = "${h.senderName.ifBlank { "A soul" }} warmed your hearth",
+                                            fontSize = 11.sp,
+                                            color = LocalDurenColors.current.TextMuted
+                                        )
+                                    }
                                 }
                                 Spacer(Modifier.height(DurenSpacing.space2))
                             }
@@ -393,8 +402,14 @@ private fun PresenceControls(
         // Banked Status — an away note that clears itself.
         if (profile.isBanked) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                DurenIcon(
+                    DurenIcon.Moon,
+                    size = 14.dp,
+                    tint = LocalDurenColors.current.TextSecondary
+                )
+                Spacer(Modifier.width(DurenSpacing.space1))
                 Text(
-                    text = "💤 ${profile.bankedStatus}",
+                    text = profile.bankedStatus,
                     fontSize = 13.sp,
                     color = LocalDurenColors.current.TextSecondary
                 )

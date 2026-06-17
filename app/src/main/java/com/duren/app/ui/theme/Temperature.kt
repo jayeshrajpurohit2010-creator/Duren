@@ -12,14 +12,13 @@ import androidx.compose.ui.graphics.Color
  */
 enum class Temperature(
     val label: String,
-    val emoji: String,
     val color: Color
 ) {
-    Cold("Cold", "❄️", DurenColors.TempCold),
-    Warm("Warm", "🌡", DurenColors.TempWarm),
-    Hot("Hot", "🔥", DurenColors.TempHot),
-    Blazing("Blazing", "🌋", DurenColors.TempBlazing),
-    DrumCircle("Drum Circle", "☀️", DurenColors.TempDrumCircle);
+    Cold("Cold", DurenColors.TempCold),
+    Warm("Warm", DurenColors.TempWarm),
+    Hot("Hot", DurenColors.TempHot),
+    Blazing("Blazing", DurenColors.TempBlazing),
+    DrumCircle("Drum Circle", DurenColors.TempDrumCircle);
 
     companion object {
         /** 0 → Cold, 1–4 → Warm, 5–9 → Hot, 10–19 → Blazing, 20+ → Drum Circle. */
